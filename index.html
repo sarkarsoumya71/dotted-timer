@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dot Timer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #131316;
+    --border: #1e1e24;
+    --text: #e8e6e3;
+    --text-dim: #6b6a6f;
+    --accent: #f97316;
+    --accent-glow: rgba(249, 115, 22, 0.15);
+    --accent-soft: rgba(249, 115, 22, 0.08);
+    --green: #22c55e;
+    --red: #ef4444;
+    --dot-empty: #1e1e24;
+    --dot-filled: #f97316;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 740px;
+    padding: 24px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .header .cycle-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  /* Elapsed time display */
+  .time-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 56px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+
+  .time-display .seconds-fraction {
+    font-size: 28px;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  .minute-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    font-weight: 400;
+  }
+
+  .minute-label span {
+    color: var(--accent);
+  }
+
+  /* Dot grid */
+  .dot-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 48px;
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .dot-wrapper {
+    position: relative;
+    width: 28px;
+    height: 28px;
+  }
+
+  .dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--dot-empty);
+    position: relative;
+    overflow: hidden;
+    transition: background 0.1s ease;
+  }
+
+  .dot.filled {
+    background: var(--dot-filled);
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+  }
+
+  /* The active dot uses a conic gradient to show progress */
+  .dot.active {
+    background: var(--dot-empty);
+    box-shadow: 0 0 16px var(--accent-glow), 0 0 4px var(--accent-glow);
+  }
+
+  .dot.active .fill-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--dot-filled) calc(var(--progress) * 360deg),
+      transparent calc(var(--progress) * 360deg)
+    );
+    transition: none;
+  }
+
+  .dot.active .dot-center {
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  .dot-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 500;
+    color: transparent;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .dot-wrapper:hover .dot-number {
+    color: var(--text-dim);
+  }
+
+  .dot.filled .dot-number,
+  .dot.active .dot-number {
+    color: transparent;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 12px 28px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  .btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    background: #ea6a10;
+    border-color: #ea6a10;
+  }
+
+  .btn.stop-btn {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .btn.stop-btn:hover {
+    background: rgba(239, 68, 68, 0.08);
+  }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .stat {
+    background: var(--surface);
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text);
+  }
+
+  .stat-value.running {
+    color: var(--green);
+  }
+
+  .stat-value.paused {
+    color: var(--red);
+  }
+
+  /* Status indicator */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+  }
+
+  .status.is-running .status-dot {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+    animation: pulse 1.5s ease infinite;
+  }
+
+  .status.is-paused .status-dot {
+    background: var(--red);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .time-display { font-size: 40px; }
+    .time-display .seconds-fraction { font-size: 20px; }
+    .dot-grid { padding: 16px; gap: 6px; }
+    .dot-wrapper, .dot { width: 22px; height: 22px; }
+    .stats { grid-template-columns: 1fr; }
+    .controls { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Dot Timer</h1>
+    <span class="cycle-count" id="cycleCount"></span>
+  </div>
+
+  <div class="status" id="status">
+    <div class="status-dot"></div>
+    <span id="statusText">Idle</span>
+  </div>
+
+  <div class="time-display" id="timeDisplay">
+    00:00<span class="seconds-fraction">:00</span>
+  </div>
+
+  <div class="minute-label" id="minuteLabel">
+    Minute <span>0</span> of 60
+  </div>
+
+  <div class="dot-grid" id="dotGrid"></div>
+
+  <div class="controls">
+    <button class="btn primary" id="playPauseBtn" onclick="togglePlayPause()">Play</button>
+    <button class="btn stop-btn" id="resetBtn" onclick="resetTimer()">Reset</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Running</div>
+      <div class="stat-value running" id="statRunning">00:00:00</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Paused</div>
+      <div class="stat-value paused" id="statPaused">00:00:00</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Cycles</div>
+      <div class="stat-value" id="statCycles">0</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // State
+  let isRunning = false;
+  let totalRunningMs = 0;
+  let totalPausedMs = 0;
+  let cycles = 0;
+  let lastTickTime = null;
+  let lastPauseTime = null;
+
+  // Current position in the 60-minute cycle
+  // elapsedCycleMs tracks how far we are into the current 60-min cycle
+  let elapsedCycleMs = 0;
+
+  const MINUTE_MS = 60000;
+  const CYCLE_MS = 60 * MINUTE_MS; // 60 minutes
+
+  // DOM
+  const dotGrid = document.getElementById('dotGrid');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const minuteLabel = document.getElementById('minuteLabel');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const statRunning = document.getElementById('statRunning');
+  const statPaused = document.getElementById('statPaused');
+  const statCycles = document.getElementById('statCycles');
+  const cycleCount = document.getElementById('cycleCount');
+
+  // Build 60 dots
+  function buildDots() {
+    dotGrid.innerHTML = '';
+    for (let i = 0; i < 60; i++) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'dot-wrapper';
+
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.id = `dot-${i}`;
+
+      const num = document.createElement('div');
+      num.className = 'dot-number';
+      num.textContent = i + 1;
+
+      wrapper.appendChild(dot);
+      wrapper.appendChild(num);
+      dotGrid.appendChild(wrapper);
+    }
+  }
+
+  // Format ms to HH:MM:SS
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  // Update dots based on elapsedCycleMs
+  function updateDots() {
+    const currentMinute = Math.floor(elapsedCycleMs / MINUTE_MS);
+    const progressInMinute = (elapsedCycleMs % MINUTE_MS) / MINUTE_MS;
+
+    for (let i = 0; i < 60; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'dot';
+      dot.innerHTML = '';
+
+      if (i < currentMinute) {
+        // Fully filled
+        dot.classList.add('filled');
+      } else if (i === currentMinute) {
+        // Active, filling up
+        dot.classList.add('active');
+        dot.style.setProperty('--progress', progressInMinute);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'fill-overlay';
+        dot.appendChild(overlay);
+
+        const center = document.createElement('div');
+        center.className = 'dot-center';
+        dot.appendChild(center);
+      }
+    }
+
+    // Update minute label
+    const minSpan = minuteLabel.querySelector('span');
+    minSpan.textContent = Math.min(currentMinute + 1, 60);
+  }
+
+  // Update the big time display
+  function updateTimeDisplay() {
+    const totalSec = Math.floor(totalRunningMs / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+
+    const mainTime = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const secPart = String(s).padStart(2,'0');
+
+    timeDisplay.innerHTML = `${mainTime}<span class="seconds-fraction">:${secPart}</span>`;
+  }
+
+  // Update stats
+  function updateStats() {
+    statRunning.textContent = formatTime(totalRunningMs);
+    statPaused.textContent = formatTime(totalPausedMs);
+    statCycles.textContent = cycles;
+    cycleCount.textContent = cycles > 0 ? `cycle ${cycles + 1}` : '';
+  }
+
+  // Main loop
+  function tick() {
+    if (!isRunning) return;
+
+    const now = performance.now();
+    const delta = now - lastTickTime;
+    lastTickTime = now;
+
+    totalRunningMs += delta;
+    elapsedCycleMs += delta;
+
+    // Check for cycle completion
+    if (elapsedCycleMs >= CYCLE_MS) {
+      cycles++;
+      elapsedCycleMs = elapsedCycleMs - CYCLE_MS;
+    }
+
+    updateDots();
+    updateTimeDisplay();
+    updateStats();
+
+    requestAnimationFrame(tick);
+  }
+
+  // Play/Pause toggle
+  function togglePlayPause() {
+    if (isRunning) {
+      // Pause
+      isRunning = false;
+      lastPauseTime = performance.now();
+      playPauseBtn.textContent = 'Play';
+      playPauseBtn.classList.add('primary');
+      statusEl.className = 'status is-paused';
+      statusText.textContent = 'Paused';
+    } else {
+      // Play
+      if (lastPauseTime !== null) {
+        const pauseDelta = performance.now() - lastPauseTime;
+        totalPausedMs += pauseDelta;
+      }
+      isRunning = true;
+      lastTickTime = performance.now();
+      lastPauseTime = null;
+      playPauseBtn.textContent = 'Pause';
+      playPauseBtn.classList.remove('primary');
+      statusEl.className = 'status is-running';
+      statusText.textContent = 'Running';
+      requestAnimationFrame(tick);
+    }
+    updateStats();
+  }
+
+  // Reset
+  function resetTimer() {
+    isRunning = false;
+    totalRunningMs = 0;
+    totalPausedMs = 0;
+    elapsedCycleMs = 0;
+    cycles = 0;
+    lastTickTime = null;
+    lastPauseTime = null;
+
+    playPauseBtn.textContent = 'Play';
+    playPauseBtn.classList.add('primary');
+    statusEl.className = 'status';
+    statusText.textContent = 'Idle';
+
+    updateDots();
+    updateTimeDisplay();
+    updateStats();
+  }
+
+  // Keyboard shortcut
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlayPause();
+    }
+    if (e.code === 'KeyR') {
+      resetTimer();
+    }
+  });
+
+  // Init
+  buildDots();
+  updateDots();
+</script>
+
+</body>
+</html>
