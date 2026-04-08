@@ -878,7 +878,7 @@
   <div class="earnings-section">
     <div class="earnings-header">Earnings &mdash; $<span id="totalEarnings">0</span></div>
     <div id="billsContainer">
-      <div class="earnings-empty" id="earningsEmpty">Complete your first hour to earn $1</div>
+      <div class="earnings-empty" id="earningsEmpty">Complete your first hour to earn $100</div>
     </div>
   </div>
 </div>
@@ -1319,7 +1319,7 @@
     cycleCountEl.textContent = cycles > 0 ? `cycle ${cycles + 1}` : '';
     const goal = parseInt(goalInput.value) || 8;
     goalProgressText.innerHTML = `<span>${cycles}</span> / ${goal} completed`;
-    totalEarningsEl.textContent = cycles;
+    totalEarningsEl.textContent = cycles * 100;
   }
 
   function updateDayBar() {
@@ -1358,7 +1358,7 @@
     if (silent) bill.style.opacity = '1';
     const quote = hourQuotes[(hourNum - 1) % hourQuotes.length];
     bill.innerHTML = `
-      <div class="bill-hour">$${hourNum}</div>
+      <div class="bill-hour">$100</div>
       <div class="bill-label">Hour ${hourNum} earned</div>
       <div class="bill-symbol">$</div>
       <div class="bill-quote">"${quote}"</div>
@@ -1418,7 +1418,7 @@
     const goal = parseInt(goalInput.value) || 8;
     const quote = goalQuotes[Math.floor(Math.random() * goalQuotes.length)];
     document.getElementById('celebTitle').textContent = `${goal} Hours Complete!`;
-    document.getElementById('celebSub').textContent = `You earned $${goal} today.`;
+    document.getElementById('celebSub').textContent = `You earned $${goal * 100} today.`;
     document.getElementById('celebQuote').textContent = `"${quote}"`;
     document.getElementById('celebrationOverlay').classList.add('visible');
   }
