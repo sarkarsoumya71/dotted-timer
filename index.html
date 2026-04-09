@@ -21,11 +21,9 @@
     --accent-glow: rgba(249, 115, 22, 0.15);
     --accent-soft: rgba(249, 115, 22, 0.08);
     --green: #22c55e;
-    --green-soft: rgba(34, 197, 94, 0.1);
     --red: #ef4444;
     --red-soft: rgba(239, 68, 68, 0.08);
     --gold: #fbbf24;
-    --gold-soft: rgba(251, 191, 36, 0.1);
     --dot-empty: #1e1e24;
     --dot-filled: #f97316;
   }
@@ -52,7 +50,7 @@
   /* ── Header ── */
   .header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
   }
@@ -78,6 +76,12 @@
     color: var(--text-dimmer);
   }
 
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .save-indicator {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
@@ -85,17 +89,63 @@
     letter-spacing: 0.04em;
     transition: color 0.3s;
   }
+  .save-indicator.saving { color: var(--accent); }
+  .save-indicator.saved { color: var(--green); }
+  .save-indicator.error { color: var(--red); }
 
-  .save-indicator.saving {
-    color: var(--accent);
+  /* User avatar */
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: default;
   }
 
-  .save-indicator.saved {
-    color: var(--green);
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
+    flex-shrink: 0;
   }
 
-  .save-indicator.error {
-    color: var(--red);
+  .user-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── History button ── */
+  .history-toggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .history-toggle:hover {
+    border-color: var(--accent);
+    color: var(--text);
   }
 
   /* ── Day progress bar ── */
@@ -129,10 +179,7 @@
     font-weight: 500;
     color: var(--text);
   }
-
-  .day-hours-left span {
-    color: var(--accent);
-  }
+  .day-hours-left span { color: var(--accent); }
 
   .day-bar-track {
     width: 100%;
@@ -183,12 +230,9 @@
     text-align: center;
     letter-spacing: 0.05em;
   }
+  .time-input-group input:focus { border-color: var(--accent); }
 
-  .time-input-group input:focus {
-    border-color: var(--accent);
-  }
-
-  /* ── Goal setting ── */
+  /* ── Goal ── */
   .goal-section {
     display: flex;
     align-items: center;
@@ -221,20 +265,14 @@
     outline: none;
     text-align: center;
   }
-
-  .goal-section input:focus {
-    border-color: var(--accent);
-  }
+  .goal-section input:focus { border-color: var(--accent); }
 
   .goal-progress-text {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--text-dimmer);
   }
-
-  .goal-progress-text span {
-    color: var(--gold);
-  }
+  .goal-progress-text span { color: var(--gold); }
 
   /* ── Status ── */
   .status-row {
@@ -267,10 +305,7 @@
     box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
     animation: pulse 1.5s ease infinite;
   }
-
-  .status.is-paused .status-dot {
-    background: var(--red);
-  }
+  .status.is-paused .status-dot { background: var(--red); }
 
   .pause-timer {
     font-family: 'JetBrains Mono', monospace;
@@ -280,15 +315,9 @@
     transition: opacity 0.3s ease;
     letter-spacing: 0.04em;
   }
+  .pause-timer.visible { opacity: 0.7; }
 
-  .pause-timer.visible {
-    opacity: 0.7;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
   /* ── Time display ── */
   .time-display {
@@ -300,12 +329,7 @@
     margin-bottom: 8px;
     line-height: 1;
   }
-
-  .time-display .seconds-fraction {
-    font-size: 28px;
-    color: var(--text-dim);
-    font-weight: 300;
-  }
+  .time-display .seconds-fraction { font-size: 28px; color: var(--text-dim); font-weight: 300; }
 
   .minute-label {
     font-family: 'JetBrains Mono', monospace;
@@ -314,7 +338,6 @@
     margin-bottom: 32px;
     font-weight: 400;
   }
-
   .minute-label span { color: var(--accent); }
 
   /* ── Dot grid ── */
@@ -329,11 +352,7 @@
     border-radius: 16px;
   }
 
-  .dot-wrapper {
-    position: relative;
-    width: 28px;
-    height: 28px;
-  }
+  .dot-wrapper { position: relative; width: 28px; height: 28px; }
 
   .dot {
     width: 28px;
@@ -345,10 +364,7 @@
     transition: background 0.1s ease;
   }
 
-  .dot.filled {
-    background: var(--dot-filled);
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
-  }
+  .dot.filled { background: var(--dot-filled); box-shadow: 0 0 12px rgba(249, 115, 22, 0.3); }
 
   .dot.active {
     background: var(--dot-empty);
@@ -356,21 +372,13 @@
   }
 
   .dot.active .fill-overlay {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: conic-gradient(
-      var(--dot-filled) calc(var(--progress) * 360deg),
-      transparent calc(var(--progress) * 360deg)
-    );
+    position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(var(--dot-filled) calc(var(--progress) * 360deg), transparent calc(var(--progress) * 360deg));
   }
 
   .dot.active .dot-center {
-    position: absolute;
-    inset: 4px;
-    border-radius: 50%;
-    background: var(--surface);
-    z-index: 1;
+    position: absolute; inset: 4px; border-radius: 50%;
+    background: var(--surface); z-index: 1;
   }
 
   /* ── Controls ── */
@@ -383,380 +391,217 @@
 
   .btn {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    padding: 12px 28px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-transform: uppercase;
-    user-select: none;
+    font-size: 13px; font-weight: 500; letter-spacing: 0.04em;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 12px 28px; border-radius: 10px; cursor: pointer;
+    transition: all 0.15s ease; text-transform: uppercase; user-select: none;
   }
-
   .btn:hover { border-color: var(--accent); background: var(--accent-soft); }
   .btn:active { transform: scale(0.97); }
-
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .btn.primary:hover { background: #ea6a10; border-color: #ea6a10; }
   .btn.stop-btn { border-color: var(--red); color: var(--red); }
   .btn.stop-btn:hover { background: var(--red-soft); }
 
   .shortcut-hint {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--text-dimmer);
-    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dimmer); letter-spacing: 0.06em;
   }
-
   .shortcut-hint kbd {
-    display: inline-block;
-    padding: 2px 6px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 9px;
+    display: inline-block; padding: 2px 6px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 4px; font-size: 9px;
   }
 
   /* ── Stats ── */
   .stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 32px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 32px;
   }
-
-  .stat {
-    background: var(--surface);
-    padding: 20px;
-  }
-
+  .stat { background: var(--surface); padding: 20px; }
   .stat-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 400;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
   }
-
-  .stat-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 20px;
-    font-weight: 400;
-    color: var(--text);
-  }
-
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 400; color: var(--text); }
   .stat-value.running { color: var(--green); }
   .stat-value.paused { color: var(--red); }
 
   /* ── Earnings ── */
   .earnings-section { margin-bottom: 32px; }
-
   .earnings-header {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 400;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 400;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px;
   }
-
-  .bills-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
+  .bills-grid { display: flex; flex-wrap: wrap; gap: 12px; }
 
   .bill {
-    width: 160px;
-    height: 72px;
+    width: 160px; height: 72px;
     background: linear-gradient(135deg, #1a3a2a 0%, #0d2818 50%, #1a3a2a 100%);
-    border: 1.5px solid #2a5a3a;
-    border-radius: 6px;
-    padding: 8px 10px;
-    position: relative;
-    overflow: hidden;
-    animation: billAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    opacity: 0;
+    border: 1.5px solid #2a5a3a; border-radius: 6px; padding: 8px 10px;
+    position: relative; overflow: hidden;
+    animation: billAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0;
   }
-
   @keyframes billAppear {
     from { opacity: 0; transform: translateY(10px) scale(0.9) rotate(-2deg); }
     to { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
   }
-
   .bill::before {
-    content: '';
-    position: absolute;
-    inset: 3px;
-    border: 1px solid rgba(42, 90, 58, 0.5);
-    border-radius: 3px;
-    pointer-events: none;
+    content: ''; position: absolute; inset: 3px;
+    border: 1px solid rgba(42, 90, 58, 0.5); border-radius: 3px; pointer-events: none;
   }
-
-  .bill-hour {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: #4a9a6a;
-    line-height: 1;
-  }
-
-  .bill-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #3a7a5a;
-    margin-top: 2px;
-  }
-
-  .bill-quote {
-    font-family: 'Outfit', sans-serif;
-    font-size: 8px;
-    color: #5aaa7a;
-    position: absolute;
-    bottom: 8px;
-    left: 10px;
-    right: 10px;
-    line-height: 1.3;
-    font-style: italic;
-  }
-
-  .bill-symbol {
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    font-family: 'Playfair Display', serif;
-    font-size: 14px;
-    color: #3a7a5a;
-    font-weight: 700;
-  }
+  .bill-hour { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #4a9a6a; line-height: 1; }
+  .bill-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; color: #3a7a5a; margin-top: 2px; }
+  .bill-quote { font-family: 'Outfit', sans-serif; font-size: 8px; color: #5aaa7a; position: absolute; bottom: 8px; left: 10px; right: 10px; line-height: 1.3; font-style: italic; }
+  .bill-symbol { position: absolute; top: 8px; right: 10px; font-family: 'Playfair Display', serif; font-size: 14px; color: #3a7a5a; font-weight: 700; }
 
   .earnings-empty {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dimmer);
-    padding: 20px;
-    text-align: center;
-    background: var(--surface);
-    border: 1px dashed var(--border);
-    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dimmer);
+    padding: 20px; text-align: center; background: var(--surface);
+    border: 1px dashed var(--border); border-radius: 12px;
   }
 
-  /* ── Check-in modal ── */
+  /* ── Modals ── */
   .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 100;
   }
-
   .modal-overlay.visible { display: flex; }
-
   .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 32px 40px;
-    text-align: center;
-    max-width: 400px;
-    width: 90%;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px 40px; text-align: center; max-width: 400px; width: 90%;
     animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.9) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   .modal-emoji { font-size: 40px; margin-bottom: 16px; }
-
-  .modal-title {
-    font-family: 'Outfit', sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
-  }
-
-  .modal-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-bottom: 24px;
-    line-height: 1.5;
-  }
-
+  .modal-title { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .modal-sub { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
   .modal-btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    padding: 12px 32px;
-    border-radius: 10px;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: background 0.15s;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.04em;
+    background: var(--accent); border: none; color: #fff; padding: 12px 32px;
+    border-radius: 10px; cursor: pointer; text-transform: uppercase; transition: background 0.15s;
   }
-
   .modal-btn:hover { background: #ea6a10; }
 
-  /* ── Celebration ── */
   .celebration-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center; z-index: 200;
   }
-
   .celebration-overlay.visible { display: flex; }
-
-  .celebration {
-    text-align: center;
-    animation: celebIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  @keyframes celebIn {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
+  .celebration { text-align: center; animation: celebIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes celebIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
   .celebration-icon { font-size: 64px; margin-bottom: 20px; }
-
-  .celebration-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--gold);
-    margin-bottom: 12px;
-  }
-
-  .celebration-sub {
-    font-family: 'Outfit', sans-serif;
-    font-size: 16px;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-
-  .celebration-quote {
-    font-family: 'Playfair Display', serif;
-    font-style: italic;
-    font-size: 18px;
-    color: var(--text);
-    max-width: 400px;
-    margin: 16px auto 32px;
-    line-height: 1.5;
-  }
-
-  .celebration .modal-btn {
-    background: var(--gold);
-    color: var(--bg);
-  }
+  .celebration-title { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: var(--gold); margin-bottom: 12px; }
+  .celebration-sub { font-family: 'Outfit', sans-serif; font-size: 16px; color: var(--text-dim); margin-bottom: 8px; }
+  .celebration-quote { font-family: 'Playfair Display', serif; font-style: italic; font-size: 18px; color: var(--text); max-width: 400px; margin: 16px auto 32px; line-height: 1.5; }
+  .celebration .modal-btn { background: var(--gold); color: var(--bg); }
 
   /* ── Setup screen ── */
   .setup-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 300;
-    transition: opacity 0.4s;
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 300; transition: opacity 0.4s;
   }
-
-  .setup-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .setup-box {
-    text-align: center;
-    max-width: 400px;
-    width: 90%;
-  }
-
-  .setup-box h2 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-
-  .setup-box p {
-    font-family: 'Outfit', sans-serif;
-    font-size: 14px;
-    color: var(--text-dimmer);
-    margin-bottom: 28px;
-    line-height: 1.5;
-  }
-
-  .setup-box .setup-info {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--text-dimmer);
-    margin-top: 16px;
-    line-height: 1.6;
-  }
-
-  .setup-input-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-
+  .setup-overlay.hidden { opacity: 0; pointer-events: none; }
+  .setup-box { text-align: center; max-width: 400px; width: 90%; }
+  .setup-box h2 { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+  .setup-box p { font-family: 'Outfit', sans-serif; font-size: 14px; color: var(--text-dimmer); margin-bottom: 28px; line-height: 1.5; }
+  .setup-box .setup-info { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dimmer); margin-top: 16px; line-height: 1.6; }
+  .setup-input-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
   .setup-input-row input {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 14px;
-    border-radius: 8px;
-    width: 260px;
-    outline: none;
-    text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; background: var(--surface);
+    border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px;
+    width: 260px; outline: none; text-align: center;
+  }
+  .setup-input-row input:focus { border-color: var(--accent); }
+  .setup-or { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dimmer); margin: 16px 0; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ══════════════════════════════════════ */
+  /* HISTORY DRAWER                         */
+  /* ══════════════════════════════════════ */
+  .history-drawer-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 250; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .history-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .history-drawer {
+    position: fixed; top: 0; right: -420px; width: 400px; max-width: 90vw;
+    height: 100vh; background: var(--surface); border-left: 1px solid var(--border);
+    z-index: 260; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto; padding: 32px 24px;
+  }
+  .history-drawer.open { right: 0; }
+
+  .history-drawer-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;
+  }
+  .history-drawer-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim);
+  }
+  .history-close {
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--text-dim);
+    background: none; border: none; cursor: pointer; padding: 4px 8px; line-height: 1;
+  }
+  .history-close:hover { color: var(--text); }
+
+  /* Day card */
+  .history-day {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 12px;
+  }
+  .history-day-date {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
+    color: var(--accent); letter-spacing: 0.04em; margin-bottom: 12px;
+  }
+  .history-day-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .history-stat-item {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .history-stat-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 400;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer);
+  }
+  .history-stat-val {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 400; color: var(--text);
+  }
+  .history-stat-val.green { color: var(--green); }
+  .history-stat-val.red { color: var(--red); }
+  .history-stat-val.gold { color: var(--gold); }
+
+  .history-sessions {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .history-sessions-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 400;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer); margin-bottom: 8px;
+  }
+  .history-session {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+  }
+  .session-type {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .session-type.work { background: var(--green); }
+  .session-type.pause { background: var(--red); }
+  .session-text {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim);
   }
 
-  .setup-input-row input:focus {
-    border-color: var(--accent);
+  .history-empty {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dimmer);
+    text-align: center; padding: 40px 20px;
   }
 
-  .setup-or {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--text-dimmer);
-    margin: 16px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+  .history-clear {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-dimmer); background: none;
+    border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px;
+    cursor: pointer; margin-top: 20px; display: block; width: 100%;
+    transition: all 0.15s;
   }
+  .history-clear:hover { border-color: var(--red); color: var(--red); }
 
   /* ── Responsive ── */
   @media (max-width: 600px) {
@@ -769,12 +614,13 @@
     .controls { flex-wrap: wrap; }
     .bill { width: 140px; height: 64px; }
     .day-time-config { flex-wrap: wrap; gap: 10px; }
+    .user-name { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- Setup screen for cloud sync -->
+<!-- Setup screen -->
 <div class="setup-overlay" id="setupOverlay">
   <div class="setup-box">
     <h2>Dot Timer</h2>
@@ -793,12 +639,20 @@
 </div>
 
 <div class="container">
+  <!-- Header with avatar -->
   <div class="header">
     <div class="header-left">
       <h1>Dot Timer</h1>
       <span class="cycle-count" id="cycleCount"></span>
     </div>
-    <span class="save-indicator" id="saveIndicator"></span>
+    <div class="header-right">
+      <span class="save-indicator" id="saveIndicator"></span>
+      <button class="history-toggle" id="historyToggleBtn" onclick="toggleHistory()">History</button>
+      <div class="user-badge" id="userBadge" style="display:none;">
+        <span class="user-name" id="userName"></span>
+        <div class="user-avatar" id="userAvatar"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Day progress bar -->
@@ -839,7 +693,6 @@
     <div class="pause-timer" id="pauseTimer">paused 00:00</div>
   </div>
 
-  <!-- Main time display -->
   <div class="time-display" id="timeDisplay">
     00:00<span class="seconds-fraction">:00</span>
   </div>
@@ -848,17 +701,14 @@
     Minute <span>0</span> of 60
   </div>
 
-  <!-- Dot grid -->
   <div class="dot-grid" id="dotGrid"></div>
 
-  <!-- Controls -->
   <div class="controls">
     <button class="btn primary" id="playPauseBtn" onclick="togglePlayPause()">Play</button>
     <button class="btn stop-btn" id="resetBtn" onclick="resetTimer()">Reset</button>
     <span class="shortcut-hint"><kbd>Space</kbd> play/pause &nbsp; <kbd>R</kbd> reset</span>
   </div>
 
-  <!-- Stats -->
   <div class="stats">
     <div class="stat">
       <div class="stat-label">Total Running</div>
@@ -874,13 +724,23 @@
     </div>
   </div>
 
-  <!-- Earnings -->
   <div class="earnings-section">
     <div class="earnings-header">Earnings &mdash; $<span id="totalEarnings">0</span></div>
     <div id="billsContainer">
       <div class="earnings-empty" id="earningsEmpty">Complete your first hour to earn $100</div>
     </div>
   </div>
+</div>
+
+<!-- History drawer -->
+<div class="history-drawer-overlay" id="historyOverlay" onclick="toggleHistory()"></div>
+<div class="history-drawer" id="historyDrawer">
+  <div class="history-drawer-header">
+    <span class="history-drawer-title">Daily History</span>
+    <button class="history-close" onclick="toggleHistory()">&times;</button>
+  </div>
+  <div id="historyContent"></div>
+  <button class="history-clear" onclick="clearHistory()">Clear all history</button>
 </div>
 
 <!-- Check-in modal -->
@@ -906,16 +766,14 @@
 
 <script>
   // ══════════════════════════════════════════════
-  // CLOUD PERSISTENCE via localStorage + JSONBin
+  // CLOUD PERSISTENCE
   // ══════════════════════════════════════════════
-
   const JSONBIN_API = 'https://api.jsonbin.io/v3';
-  // Free tier: no API key needed for public bins
   let SYNC_ID = null;
   let BIN_ID = null;
-  let syncMode = 'local'; // 'local' or 'cloud'
+  let syncMode = 'local';
   let autoSaveInterval = null;
-  const SAVE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+  const SAVE_INTERVAL_MS = 30 * 60 * 1000;
 
   // ── State ──
   let isRunning = false;
@@ -934,7 +792,176 @@
   const MINUTE_MS = 60000;
   const CYCLE_MS = 60 * MINUTE_MS;
 
-  // ── Quotes ──
+  // ══════════════════════════════════════
+  // DAILY HISTORY LOG
+  // ══════════════════════════════════════
+  // Structure: { "2026-04-09": { date, totalWorkMs, totalPauseMs, sessions: [{type, start, end}], firstStart, lastEnd } }
+
+  function getTodayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function getHistory() {
+    try {
+      return JSON.parse(localStorage.getItem('dot-timer-history') || '{}');
+    } catch (e) { return {}; }
+  }
+
+  function saveHistory(h) {
+    try { localStorage.setItem('dot-timer-history', JSON.stringify(h)); } catch(e) {}
+  }
+
+  function getTodayEntry() {
+    const h = getHistory();
+    const key = getTodayKey();
+    if (!h[key]) {
+      h[key] = { date: key, totalWorkMs: 0, totalPauseMs: 0, sessions: [], firstStart: null, lastEnd: null, cycles: 0, earned: 0 };
+      saveHistory(h);
+    }
+    return h[key];
+  }
+
+  function logSession(type, startTime, endTime, durationMs) {
+    const h = getHistory();
+    const key = getTodayKey();
+    if (!h[key]) {
+      h[key] = { date: key, totalWorkMs: 0, totalPauseMs: 0, sessions: [], firstStart: null, lastEnd: null, cycles: 0, earned: 0 };
+    }
+    const entry = h[key];
+
+    const startStr = new Date(startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const endStr = new Date(endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    entry.sessions.push({ type, start: startStr, end: endStr, durationMs });
+
+    if (type === 'work') {
+      entry.totalWorkMs += durationMs;
+    } else {
+      entry.totalPauseMs += durationMs;
+    }
+
+    if (!entry.firstStart) entry.firstStart = startStr;
+    entry.lastEnd = endStr;
+    entry.cycles = cycles;
+    entry.earned = cycles * 100;
+
+    saveHistory(h);
+  }
+
+  // Track session start times
+  let currentSessionStart = null;
+  let currentSessionType = null; // 'work' or 'pause'
+
+  function startWorkSession() {
+    currentSessionStart = Date.now();
+    currentSessionType = 'work';
+  }
+
+  function startPauseSession() {
+    currentSessionStart = Date.now();
+    currentSessionType = 'pause';
+  }
+
+  function endCurrentSession() {
+    if (currentSessionStart && currentSessionType) {
+      const now = Date.now();
+      const duration = now - currentSessionStart;
+      if (duration > 5000) { // only log if > 5 seconds
+        logSession(currentSessionType, currentSessionStart, now, duration);
+      }
+    }
+    currentSessionStart = null;
+    currentSessionType = null;
+  }
+
+  // ── Render history drawer ──
+  function renderHistory() {
+    const content = document.getElementById('historyContent');
+    const h = getHistory();
+    const keys = Object.keys(h).sort().reverse(); // newest first
+
+    if (keys.length === 0) {
+      content.innerHTML = '<div class="history-empty">No history yet. Start the timer to begin tracking.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const key of keys) {
+      const day = h[key];
+      const dateObj = new Date(key + 'T12:00:00');
+      const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+      const workHrs = (day.totalWorkMs / 3600000).toFixed(1);
+      const pauseHrs = (day.totalPauseMs / 3600000).toFixed(1);
+
+      html += `<div class="history-day">
+        <div class="history-day-date">${dateStr}</div>
+        <div class="history-day-stats">
+          <div class="history-stat-item">
+            <span class="history-stat-label">Worked</span>
+            <span class="history-stat-val green">${workHrs}h</span>
+          </div>
+          <div class="history-stat-item">
+            <span class="history-stat-label">Paused</span>
+            <span class="history-stat-val red">${pauseHrs}h</span>
+          </div>
+          <div class="history-stat-item">
+            <span class="history-stat-label">Active</span>
+            <span class="history-stat-val">${day.firstStart || '--'} - ${day.lastEnd || '--'}</span>
+          </div>
+          <div class="history-stat-item">
+            <span class="history-stat-label">Earned</span>
+            <span class="history-stat-val gold">$${day.earned || 0}</span>
+          </div>
+        </div>`;
+
+      if (day.sessions && day.sessions.length > 0) {
+        html += `<div class="history-sessions">
+          <div class="history-sessions-title">Sessions</div>`;
+        // Show last 20 sessions max
+        const recent = day.sessions.slice(-20);
+        for (const s of recent) {
+          const durMin = Math.round(s.durationMs / 60000);
+          const durStr = durMin >= 60 ? `${Math.floor(durMin/60)}h ${durMin%60}m` : `${durMin}m`;
+          html += `<div class="history-session">
+            <div class="session-type ${s.type}"></div>
+            <span class="session-text">${s.type === 'work' ? 'Work' : 'Pause'} ${s.start} - ${s.end} (${durStr})</span>
+          </div>`;
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+    }
+
+    content.innerHTML = html;
+  }
+
+  function toggleHistory() {
+    const drawer = document.getElementById('historyDrawer');
+    const overlay = document.getElementById('historyOverlay');
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+      drawer.classList.remove('open');
+      overlay.classList.remove('open');
+    } else {
+      renderHistory();
+      drawer.classList.add('open');
+      overlay.classList.add('open');
+    }
+  }
+
+  function clearHistory() {
+    if (confirm('Clear all daily history? This cannot be undone.')) {
+      localStorage.removeItem('dot-timer-history');
+      renderHistory();
+    }
+  }
+
+  // ══════════════════════════════════════
+  // QUOTES
+  // ══════════════════════════════════════
   const hourQuotes = [
     "The way to get started is to quit talking and begin doing.",
     "Focus is saying no to a thousand good ideas.",
@@ -1008,34 +1035,44 @@
   const saveIndicator = document.getElementById('saveIndicator');
 
   // ══════════════════════════════════════
+  // USER BADGE
+  // ══════════════════════════════════════
+  function showUserBadge(id) {
+    const badge = document.getElementById('userBadge');
+    const avatar = document.getElementById('userAvatar');
+    const name = document.getElementById('userName');
+    if (!id) { badge.style.display = 'none'; return; }
+
+    badge.style.display = 'flex';
+    name.textContent = id;
+
+    // Generate initials from sync ID
+    const parts = id.replace(/[-_\.]/g, ' ').trim().split(/\s+/);
+    let initials;
+    if (parts.length >= 2) {
+      initials = (parts[0][0] + parts[1][0]).toUpperCase();
+    } else {
+      initials = id.slice(0, 2).toUpperCase();
+    }
+    avatar.textContent = initials;
+  }
+
+  // ══════════════════════════════════════
   // PERSISTENCE LAYER
   // ══════════════════════════════════════
-
   function getState() {
     return {
-      totalRunningMs,
-      totalPausedMs,
-      cycles,
-      elapsedCycleMs,
-      goalCelebrated,
+      totalRunningMs, totalPausedMs, cycles, elapsedCycleMs, goalCelebrated,
       goal: parseInt(goalInput.value) || 8,
-      dayStart: dayStartInput.value,
-      dayEnd: dayEndInput.value,
-      sessionDate,
-      savedAt: Date.now(),
-      wasRunning: isRunning
+      dayStart: dayStartInput.value, dayEnd: dayEndInput.value,
+      sessionDate, savedAt: Date.now(), wasRunning: isRunning
     };
   }
 
   function applyState(state) {
     if (!state) return;
-
-    // If different day, offer fresh start
     const today = new Date().toDateString();
-    if (state.sessionDate && state.sessionDate !== today) {
-      // New day, keep cumulative but note it
-      sessionDate = today;
-    }
+    if (state.sessionDate && state.sessionDate !== today) sessionDate = today;
 
     totalRunningMs = state.totalRunningMs || 0;
     totalPausedMs = state.totalPausedMs || 0;
@@ -1047,17 +1084,10 @@
     if (state.dayStart) dayStartInput.value = state.dayStart;
     if (state.dayEnd) dayEndInput.value = state.dayEnd;
 
-    // Rebuild bills for earned cycles
-    for (let i = 1; i <= cycles; i++) {
-      addBill(i, true);
-    }
-
-    updateDots();
-    updateTimeDisplay();
-    updateStats();
+    for (let i = 1; i <= cycles; i++) addBill(i, true);
+    updateDots(); updateTimeDisplay(); updateStats();
   }
 
-  // ── localStorage ──
   function saveLocal() {
     try {
       localStorage.setItem('dot-timer-state', JSON.stringify(getState()));
@@ -1067,20 +1097,16 @@
   }
 
   function loadLocal() {
-    try {
-      const raw = localStorage.getItem('dot-timer-state');
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
+    try { const r = localStorage.getItem('dot-timer-state'); if (r) return JSON.parse(r); } catch(e) {}
     return null;
   }
 
-  // ── JSONBin cloud ──
   async function createBin(state) {
     try {
       showSaveStatus('saving');
       const res = await fetch(`${JSONBIN_API}/b`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Bin-Name': `dot-timer-${SYNC_ID}`, 'X-Collection-Id': undefined },
+        headers: { 'Content-Type': 'application/json', 'X-Bin-Name': `dot-timer-${SYNC_ID}` },
         body: JSON.stringify({ syncId: SYNC_ID, state })
       });
       const data = await res.json();
@@ -1090,10 +1116,7 @@
         showSaveStatus('saved');
         return true;
       }
-    } catch (e) {
-      console.error('Create bin failed:', e);
-      showSaveStatus('error');
-    }
+    } catch (e) { showSaveStatus('error'); }
     return false;
   }
 
@@ -1106,16 +1129,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ syncId: SYNC_ID, state: getState() })
       });
-      if (res.ok) {
-        showSaveStatus('saved');
-        saveLocal(); // also save locally as backup
-      } else {
-        showSaveStatus('error');
-      }
-    } catch (e) {
-      console.error('Save to bin failed:', e);
-      showSaveStatus('error');
-    }
+      if (res.ok) { showSaveStatus('saved'); saveLocal(); }
+      else showSaveStatus('error');
+    } catch (e) { showSaveStatus('error'); }
   }
 
   async function loadFromBin() {
@@ -1123,23 +1139,7 @@
     try {
       const res = await fetch(`${JSONBIN_API}/b/${BIN_ID}/latest`);
       const data = await res.json();
-      if (data.record && data.record.state) {
-        return data.record.state;
-      }
-    } catch (e) {
-      console.error('Load from bin failed:', e);
-    }
-    return null;
-  }
-
-  async function findBinBySyncId(syncId) {
-    // JSONBin free tier doesn't have search, so we store bin ID locally
-    // If user is on a new device, they won't have the bin ID
-    // Solution: we also store the bin ID in a known lookup bin
-    const lookupKey = `dot-timer-lookup-${syncId}`;
-    try {
-      const stored = localStorage.getItem(lookupKey);
-      if (stored) return stored;
+      if (data.record && data.record.state) return data.record.state;
     } catch (e) {}
     return null;
   }
@@ -1149,167 +1149,113 @@
     if (status === 'saving') saveIndicator.textContent = 'saving...';
     else if (status === 'saved') saveIndicator.textContent = 'saved';
     else if (status === 'error') saveIndicator.textContent = 'save failed';
-
-    if (status === 'saved') {
-      setTimeout(() => {
-        saveIndicator.textContent = '';
-        saveIndicator.className = 'save-indicator';
-      }, 3000);
-    }
+    if (status === 'saved') setTimeout(() => { saveIndicator.textContent = ''; saveIndicator.className = 'save-indicator'; }, 3000);
   }
 
   async function saveProgress() {
     saveLocal();
     if (syncMode === 'cloud') {
-      if (BIN_ID) {
-        await saveToBin();
-      } else {
-        await createBin(getState());
-      }
+      if (BIN_ID) await saveToBin();
+      else await createBin(getState());
     }
   }
 
   // ── Setup flow ──
   async function startWithSyncId() {
     const id = document.getElementById('syncIdInput').value.trim();
-    if (!id) {
-      document.getElementById('syncIdInput').style.borderColor = 'var(--red)';
-      return;
-    }
+    if (!id) { document.getElementById('syncIdInput').style.borderColor = 'var(--red)'; return; }
+    SYNC_ID = id; syncMode = 'cloud';
+    showUserBadge(id);
 
-    SYNC_ID = id;
-    syncMode = 'cloud';
-
-    // Check if we have a stored bin ID for this sync ID
     const storedBinId = localStorage.getItem('dot-timer-bin-id');
     const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-
     if (storedBinId && storedSyncId === id) {
       BIN_ID = storedBinId;
-      // Try to load from cloud
       const cloudState = await loadFromBin();
       const localState = loadLocal();
-
-      // Use whichever is more recent
-      if (cloudState && localState) {
-        const state = (cloudState.savedAt || 0) > (localState.savedAt || 0) ? cloudState : localState;
-        applyState(state);
-      } else {
-        applyState(cloudState || localState);
-      }
+      if (cloudState && localState) applyState((cloudState.savedAt||0) > (localState.savedAt||0) ? cloudState : localState);
+      else applyState(cloudState || localState);
     } else {
-      // New sync ID on this device, try local first
       const localState = loadLocal();
       if (localState) applyState(localState);
-      // Create new bin
       await createBin(getState());
     }
-
     localStorage.setItem('dot-timer-sync-id', SYNC_ID);
-    startAutoSave();
-    hideSetup();
+    startAutoSave(); hideSetup();
   }
 
   function startWithoutSync() {
     syncMode = 'local';
     const localState = loadLocal();
     if (localState) applyState(localState);
-    startAutoSave();
-    hideSetup();
+    showUserBadge(null);
+    startAutoSave(); hideSetup();
   }
 
   function hideSetup() {
-    const overlay = document.getElementById('setupOverlay');
-    overlay.classList.add('hidden');
-    setTimeout(() => { overlay.style.display = 'none'; }, 400);
+    const o = document.getElementById('setupOverlay');
+    o.classList.add('hidden');
+    setTimeout(() => { o.style.display = 'none'; }, 400);
   }
 
   function startAutoSave() {
-    // Auto-save every 30 minutes
-    autoSaveInterval = setInterval(() => {
-      saveProgress();
-    }, SAVE_INTERVAL_MS);
-
-    // Also save on visibility change (tab close, switch)
+    autoSaveInterval = setInterval(() => saveProgress(), SAVE_INTERVAL_MS);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        saveLocal(); // quick local save
+        endCurrentSession();
+        saveLocal();
         if (syncMode === 'cloud' && BIN_ID) saveToBin();
       }
     });
-
-    // Save on beforeunload
-    window.addEventListener('beforeunload', () => {
-      saveLocal();
-    });
+    window.addEventListener('beforeunload', () => { endCurrentSession(); saveLocal(); });
   }
 
-  // Check if user already has a sync ID stored
   (function checkExistingSession() {
-    const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-    if (storedSyncId) {
-      document.getElementById('syncIdInput').value = storedSyncId;
-    }
+    const s = localStorage.getItem('dot-timer-sync-id');
+    if (s) document.getElementById('syncIdInput').value = s;
   })();
 
   // ══════════════════════════════════════
-  // TIMER LOGIC (same as before)
+  // TIMER LOGIC
   // ══════════════════════════════════════
-
   function buildDots() {
     dotGrid.innerHTML = '';
     for (let i = 0; i < 60; i++) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'dot-wrapper';
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      dot.id = `dot-${i}`;
-      wrapper.appendChild(dot);
-      dotGrid.appendChild(wrapper);
+      const w = document.createElement('div'); w.className = 'dot-wrapper';
+      const d = document.createElement('div'); d.className = 'dot'; d.id = `dot-${i}`;
+      w.appendChild(d); dotGrid.appendChild(w);
     }
   }
 
   function formatHMS(ms) {
-    const s = Math.floor(ms / 1000);
+    const s = Math.floor(ms/1000);
     return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   }
 
   function formatMS(ms) {
-    const s = Math.floor(ms / 1000);
+    const s = Math.floor(ms/1000);
     return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   }
 
   function updateDots() {
-    const currentMinute = Math.floor(elapsedCycleMs / MINUTE_MS);
-    const progress = (elapsedCycleMs % MINUTE_MS) / MINUTE_MS;
-
+    const cm = Math.floor(elapsedCycleMs / MINUTE_MS);
+    const p = (elapsedCycleMs % MINUTE_MS) / MINUTE_MS;
     for (let i = 0; i < 60; i++) {
-      const dot = document.getElementById(`dot-${i}`);
-      dot.className = 'dot';
-      dot.innerHTML = '';
-
-      if (i < currentMinute) {
-        dot.classList.add('filled');
-      } else if (i === currentMinute) {
-        dot.classList.add('active');
-        dot.style.setProperty('--progress', progress);
-        const overlay = document.createElement('div');
-        overlay.className = 'fill-overlay';
-        dot.appendChild(overlay);
-        const center = document.createElement('div');
-        center.className = 'dot-center';
-        dot.appendChild(center);
+      const d = document.getElementById(`dot-${i}`);
+      d.className = 'dot'; d.innerHTML = '';
+      if (i < cm) d.classList.add('filled');
+      else if (i === cm) {
+        d.classList.add('active'); d.style.setProperty('--progress', p);
+        const o = document.createElement('div'); o.className = 'fill-overlay'; d.appendChild(o);
+        const c = document.createElement('div'); c.className = 'dot-center'; d.appendChild(c);
       }
     }
-    minuteLabel.querySelector('span').textContent = Math.min(currentMinute + 1, 60);
+    minuteLabel.querySelector('span').textContent = Math.min(cm + 1, 60);
   }
 
   function updateTimeDisplay() {
-    const s = Math.floor(totalRunningMs / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    timeDisplay.innerHTML = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}<span class="seconds-fraction">:${String(sec).padStart(2,'0')}</span>`;
+    const s = Math.floor(totalRunningMs/1000);
+    timeDisplay.innerHTML = `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}<span class="seconds-fraction">:${String(s%60).padStart(2,'0')}</span>`;
   }
 
   function updateStats() {
@@ -1324,46 +1270,29 @@
 
   function updateDayBar() {
     const now = new Date();
-    const [sh, sm] = dayStartInput.value.split(':').map(Number);
-    const [eh, em] = dayEndInput.value.split(':').map(Number);
-
-    const start = new Date(now); start.setHours(sh, sm, 0, 0);
-    const end = new Date(now); end.setHours(eh, em, 0, 0);
-    if (end <= start) end.setDate(end.getDate() + 1);
-
-    const totalMs = end - start;
-    const elapsedMs = now - start;
-    const remainMs = Math.max(0, end - now);
-
-    let pct = elapsedMs < 0 ? 0 : elapsedMs >= totalMs ? 100 : (elapsedMs / totalMs) * 100;
+    const [sh,sm] = dayStartInput.value.split(':').map(Number);
+    const [eh,em] = dayEndInput.value.split(':').map(Number);
+    const start = new Date(now); start.setHours(sh,sm,0,0);
+    const end = new Date(now); end.setHours(eh,em,0,0);
+    if (end <= start) end.setDate(end.getDate()+1);
+    const totalMs = end-start, elMs = now-start, remMs = Math.max(0,end-now);
+    let pct = elMs < 0 ? 0 : elMs >= totalMs ? 100 : (elMs/totalMs)*100;
     dayBarFill.style.width = `${pct}%`;
-
-    const hoursLeft = Math.max(0, remainMs / 3600000);
-    const hWhole = Math.floor(hoursLeft);
-    const mLeft = Math.round((hoursLeft - hWhole) * 60);
-    dayHoursLeft.innerHTML = `<span>${hWhole}h ${mLeft}m</span> left`;
+    const hl = Math.max(0, remMs/3600000), hw = Math.floor(hl), ml = Math.round((hl-hw)*60);
+    dayHoursLeft.innerHTML = `<span>${hw}h ${ml}m</span> left`;
   }
 
   function addBill(hourNum, silent = false) {
     if (earningsEmpty) earningsEmpty.style.display = 'none';
     if (!document.querySelector('.bills-grid')) {
-      const grid = document.createElement('div');
-      grid.className = 'bills-grid';
-      billsContainer.appendChild(grid);
+      const g = document.createElement('div'); g.className = 'bills-grid'; billsContainer.appendChild(g);
     }
-    const grid = document.querySelector('.bills-grid');
-    const bill = document.createElement('div');
-    bill.className = 'bill';
-    if (silent) bill.style.animation = 'none';
-    if (silent) bill.style.opacity = '1';
-    const quote = hourQuotes[(hourNum - 1) % hourQuotes.length];
-    bill.innerHTML = `
-      <div class="bill-hour">$100</div>
-      <div class="bill-label">Hour ${hourNum} earned</div>
-      <div class="bill-symbol">$</div>
-      <div class="bill-quote">"${quote}"</div>
-    `;
-    grid.appendChild(bill);
+    const g = document.querySelector('.bills-grid');
+    const b = document.createElement('div'); b.className = 'bill';
+    if (silent) { b.style.animation = 'none'; b.style.opacity = '1'; }
+    const q = hourQuotes[(hourNum-1) % hourQuotes.length];
+    b.innerHTML = `<div class="bill-hour">$100</div><div class="bill-label">Hour ${hourNum} earned</div><div class="bill-symbol">$</div><div class="bill-quote">"${q}"</div>`;
+    g.appendChild(b);
   }
 
   // ── Check-in ──
@@ -1374,19 +1303,16 @@
 
   function showCheckin() {
     const msgs = isRunning ? checkinMessagesRunning : checkinMessagesPaused;
-    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+    const msg = msgs[Math.floor(Math.random()*msgs.length)];
     const wasRunning = isRunning;
-
     if (wasRunning) {
       isRunning = false;
+      endCurrentSession();
       lastPauseTime = performance.now();
-      playPauseBtn.textContent = 'Play';
-      playPauseBtn.classList.add('primary');
-      statusEl.className = 'status is-paused';
-      statusText.textContent = 'Paused';
-      startPauseDisplay();
+      playPauseBtn.textContent = 'Play'; playPauseBtn.classList.add('primary');
+      statusEl.className = 'status is-paused'; statusText.textContent = 'Paused';
+      startPauseDisplay(); startPauseSession();
     }
-
     document.getElementById('checkinEmoji').innerHTML = msg.emoji;
     document.getElementById('checkinTitle').textContent = msg.title;
     document.getElementById('checkinSub').textContent = msg.sub;
@@ -1400,74 +1326,48 @@
     const wasRunning = document.getElementById('checkinBtn').dataset.wasRunning === 'true';
     if (wasRunning) {
       if (lastPauseTime !== null) totalPausedMs += performance.now() - lastPauseTime;
-      isRunning = true;
-      lastTickTime = performance.now();
-      lastPauseTime = null;
-      playPauseBtn.textContent = 'Pause';
-      playPauseBtn.classList.remove('primary');
-      statusEl.className = 'status is-running';
-      statusText.textContent = 'Running';
-      stopPauseDisplay();
+      endCurrentSession();
+      isRunning = true; lastTickTime = performance.now(); lastPauseTime = null;
+      playPauseBtn.textContent = 'Pause'; playPauseBtn.classList.remove('primary');
+      statusEl.className = 'status is-running'; statusText.textContent = 'Running';
+      stopPauseDisplay(); startWorkSession();
       requestAnimationFrame(tick);
     }
-    scheduleCheckin();
-    updateStats();
+    scheduleCheckin(); updateStats();
   }
 
   function showCelebration() {
     const goal = parseInt(goalInput.value) || 8;
-    const quote = goalQuotes[Math.floor(Math.random() * goalQuotes.length)];
+    const q = goalQuotes[Math.floor(Math.random()*goalQuotes.length)];
     document.getElementById('celebTitle').textContent = `${goal} Hours Complete!`;
     document.getElementById('celebSub').textContent = `You earned $${goal * 100} today.`;
-    document.getElementById('celebQuote').textContent = `"${quote}"`;
+    document.getElementById('celebQuote').textContent = `"${q}"`;
     document.getElementById('celebrationOverlay').classList.add('visible');
   }
 
-  function dismissCelebration() {
-    document.getElementById('celebrationOverlay').classList.remove('visible');
-  }
+  function dismissCelebration() { document.getElementById('celebrationOverlay').classList.remove('visible'); }
 
   function startPauseDisplay() {
     pauseTimerEl.classList.add('visible');
     clearInterval(pauseDisplayInterval);
     pauseDisplayInterval = setInterval(() => {
-      if (lastPauseTime !== null) {
-        pauseTimerEl.textContent = `paused ${formatMS(performance.now() - lastPauseTime)}`;
-      }
+      if (lastPauseTime !== null) pauseTimerEl.textContent = `paused ${formatMS(performance.now()-lastPauseTime)}`;
     }, 1000);
   }
 
-  function stopPauseDisplay() {
-    pauseTimerEl.classList.remove('visible');
-    clearInterval(pauseDisplayInterval);
-  }
+  function stopPauseDisplay() { pauseTimerEl.classList.remove('visible'); clearInterval(pauseDisplayInterval); }
 
-  // ── Main loop ──
   function tick() {
     if (!isRunning) return;
     const now = performance.now();
-    const delta = now - lastTickTime;
-    lastTickTime = now;
-
-    totalRunningMs += delta;
-    elapsedCycleMs += delta;
-
+    const delta = now - lastTickTime; lastTickTime = now;
+    totalRunningMs += delta; elapsedCycleMs += delta;
     if (elapsedCycleMs >= CYCLE_MS) {
-      cycles++;
-      elapsedCycleMs -= CYCLE_MS;
-      addBill(cycles);
-      saveProgress(); // save on cycle completion
-
-      const goal = parseInt(goalInput.value) || 8;
-      if (cycles >= goal && !goalCelebrated) {
-        goalCelebrated = true;
-        showCelebration();
-      }
+      cycles++; elapsedCycleMs -= CYCLE_MS; addBill(cycles); saveProgress();
+      const goal = parseInt(goalInput.value)||8;
+      if (cycles >= goal && !goalCelebrated) { goalCelebrated = true; showCelebration(); }
     }
-
-    updateDots();
-    updateTimeDisplay();
-    updateStats();
+    updateDots(); updateTimeDisplay(); updateStats();
     requestAnimationFrame(tick);
   }
 
@@ -1477,56 +1377,35 @@
 
     if (isRunning) {
       isRunning = false;
+      endCurrentSession(); // log work session
       lastPauseTime = performance.now();
-      playPauseBtn.textContent = 'Play';
-      playPauseBtn.classList.add('primary');
-      statusEl.className = 'status is-paused';
-      statusText.textContent = 'Paused';
-      startPauseDisplay();
-      scheduleCheckin();
-      saveProgress(); // save on pause
+      playPauseBtn.textContent = 'Play'; playPauseBtn.classList.add('primary');
+      statusEl.className = 'status is-paused'; statusText.textContent = 'Paused';
+      startPauseDisplay(); startPauseSession();
+      scheduleCheckin(); saveProgress();
     } else {
       if (lastPauseTime !== null) totalPausedMs += performance.now() - lastPauseTime;
-      isRunning = true;
-      lastTickTime = performance.now();
-      lastPauseTime = null;
-      playPauseBtn.textContent = 'Pause';
-      playPauseBtn.classList.remove('primary');
-      statusEl.className = 'status is-running';
-      statusText.textContent = 'Running';
-      stopPauseDisplay();
-      scheduleCheckin();
-      requestAnimationFrame(tick);
+      endCurrentSession(); // log pause session
+      isRunning = true; lastTickTime = performance.now(); lastPauseTime = null;
+      playPauseBtn.textContent = 'Pause'; playPauseBtn.classList.remove('primary');
+      statusEl.className = 'status is-running'; statusText.textContent = 'Running';
+      stopPauseDisplay(); startWorkSession();
+      scheduleCheckin(); requestAnimationFrame(tick);
     }
     updateStats();
   }
 
   function resetTimer() {
     if (confirm('Reset all progress? This cannot be undone.')) {
-      isRunning = false;
-      totalRunningMs = 0;
-      totalPausedMs = 0;
-      elapsedCycleMs = 0;
-      cycles = 0;
-      lastTickTime = null;
-      lastPauseTime = null;
-      goalCelebrated = false;
-      clearTimeout(checkinTimer);
-      stopPauseDisplay();
-
-      playPauseBtn.textContent = 'Play';
-      playPauseBtn.classList.add('primary');
-      statusEl.className = 'status';
-      statusText.textContent = 'Idle';
-
-      const grid = document.querySelector('.bills-grid');
-      if (grid) grid.remove();
+      endCurrentSession();
+      isRunning = false; totalRunningMs = 0; totalPausedMs = 0; elapsedCycleMs = 0;
+      cycles = 0; lastTickTime = null; lastPauseTime = null; goalCelebrated = false;
+      clearTimeout(checkinTimer); stopPauseDisplay();
+      playPauseBtn.textContent = 'Play'; playPauseBtn.classList.add('primary');
+      statusEl.className = 'status'; statusText.textContent = 'Idle';
+      const g = document.querySelector('.bills-grid'); if (g) g.remove();
       if (earningsEmpty) earningsEmpty.style.display = '';
-
-      updateDots();
-      updateTimeDisplay();
-      updateStats();
-      saveProgress(); // save reset state
+      updateDots(); updateTimeDisplay(); updateStats(); saveProgress();
     }
   }
 
@@ -1540,56 +1419,42 @@
       else togglePlayPause();
     }
     if (e.code === 'KeyR') resetTimer();
+    if (e.code === 'KeyH') toggleHistory();
   });
 
   goalInput.addEventListener('change', () => {
-    const goal = parseInt(goalInput.value) || 8;
+    const goal = parseInt(goalInput.value)||8;
     goalProgressText.innerHTML = `<span>${cycles}</span> / ${goal} completed`;
     if (cycles < goal) goalCelebrated = false;
     saveLocal();
   });
 
-  // ── Time input formatting (enforce HH:MM) ──
   function formatTimeInput(input) {
     input.addEventListener('input', (e) => {
-      let val = e.target.value.replace(/[^\d]/g, '');
-      if (val.length >= 3) {
-        val = val.slice(0, 4);
-        val = val.slice(0, 2) + ':' + val.slice(2);
-      }
-      e.target.value = val;
+      let v = e.target.value.replace(/[^\d]/g, '');
+      if (v.length >= 3) { v = v.slice(0,4); v = v.slice(0,2)+':'+v.slice(2); }
+      e.target.value = v;
     });
-
     input.addEventListener('blur', (e) => {
-      let val = e.target.value;
-      const parts = val.split(':');
-      if (parts.length === 2) {
-        let h = parseInt(parts[0]) || 0;
-        let m = parseInt(parts[1]) || 0;
-        h = Math.min(23, Math.max(0, h));
-        m = Math.min(59, Math.max(0, m));
-        e.target.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      } else if (parts.length === 1 && parts[0].length) {
-        let h = parseInt(parts[0]) || 0;
-        h = Math.min(23, Math.max(0, h));
-        e.target.value = `${String(h).padStart(2, '0')}:00`;
+      let v = e.target.value; const p = v.split(':');
+      if (p.length===2) {
+        let h=parseInt(p[0])||0, m=parseInt(p[1])||0;
+        h=Math.min(23,Math.max(0,h)); m=Math.min(59,Math.max(0,m));
+        e.target.value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      } else if (p.length===1&&p[0].length) {
+        let h=parseInt(p[0])||0; h=Math.min(23,Math.max(0,h));
+        e.target.value = `${String(h).padStart(2,'0')}:00`;
       }
       saveLocal();
     });
   }
-
   formatTimeInput(dayStartInput);
   formatTimeInput(dayEndInput);
 
-  // ── Day bar independent tick ──
   setInterval(updateDayBar, 1000);
   updateDayBar();
 
-  // ── Init ──
-  buildDots();
-  updateDots();
-  updateStats();
+  buildDots(); updateDots(); updateStats();
 </script>
-
 </body>
 </html>
