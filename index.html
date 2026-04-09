@@ -93,28 +93,11 @@
   .save-indicator.saved { color: var(--green); }
   .save-indicator.error { color: var(--red); }
 
-  /* User avatar */
+  /* User name */
   .user-badge {
     display: flex;
     align-items: center;
-    gap: 8px;
     cursor: default;
-  }
-
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: #fff;
-    text-transform: uppercase;
-    flex-shrink: 0;
   }
 
   .user-name {
@@ -122,7 +105,7 @@
     font-size: 11px;
     color: var(--text-dim);
     letter-spacing: 0.04em;
-    max-width: 120px;
+    max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -146,6 +129,96 @@
   .history-toggle:hover {
     border-color: var(--accent);
     color: var(--text);
+  }
+
+  /* ── Settings button ── */
+  .settings-toggle {
+    font-size: 18px;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .settings-toggle:hover { color: var(--text); }
+
+  /* ── Settings drawer ── */
+  .settings-drawer-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 250; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .settings-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .settings-drawer {
+    position: fixed; top: 0; right: -420px; width: 380px; max-width: 90vw;
+    height: 100vh; background: var(--surface); border-left: 1px solid var(--border);
+    z-index: 260; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto; padding: 32px 24px;
+  }
+  .settings-drawer.open { right: 0; }
+
+  .settings-drawer-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;
+  }
+  .settings-drawer-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim);
+  }
+  .settings-close {
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--text-dim);
+    background: none; border: none; cursor: pointer; padding: 4px 8px; line-height: 1;
+  }
+  .settings-close:hover { color: var(--text); }
+
+  .settings-group {
+    margin-bottom: 24px;
+  }
+  .settings-group-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 400;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer);
+    margin-bottom: 12px;
+  }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 8px;
+  }
+  .settings-row-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text);
+  }
+  .settings-row-sub {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dimmer);
+    margin-top: 2px;
+  }
+  .settings-row-control {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .settings-row-control input[type="number"] {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius: 6px; width: 60px; outline: none; text-align: center;
+  }
+  .settings-row-control input:focus { border-color: var(--accent); }
+  .settings-row-control span {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim);
+  }
+  .settings-toggle-switch {
+    position: relative; width: 40px; height: 22px; cursor: pointer;
+  }
+  .settings-toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .settings-toggle-switch .slider {
+    position: absolute; inset: 0; background: var(--border); border-radius: 11px;
+    transition: background 0.2s;
+  }
+  .settings-toggle-switch .slider::before {
+    content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px;
+    background: var(--text-dim); border-radius: 50%; transition: all 0.2s;
+  }
+  .settings-toggle-switch input:checked + .slider { background: var(--accent); }
+  .settings-toggle-switch input:checked + .slider::before {
+    transform: translateX(18px); background: #fff;
   }
 
   /* ── Day progress bar ── */
@@ -648,9 +721,9 @@
     <div class="header-right">
       <span class="save-indicator" id="saveIndicator"></span>
       <button class="history-toggle" id="historyToggleBtn" onclick="toggleHistory()">History</button>
+      <button class="settings-toggle" id="settingsToggleBtn" onclick="toggleSettings()" title="Settings">&#9881;</button>
       <div class="user-badge" id="userBadge" style="display:none;">
         <span class="user-name" id="userName"></span>
-        <div class="user-avatar" id="userAvatar"></div>
       </div>
     </div>
   </div>
@@ -741,6 +814,41 @@
   </div>
   <div id="historyContent"></div>
   <button class="history-clear" onclick="clearHistory()">Clear all history</button>
+</div>
+
+<!-- Settings drawer -->
+<div class="settings-drawer-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+<div class="settings-drawer" id="settingsDrawer">
+  <div class="settings-drawer-header">
+    <span class="settings-drawer-title">Settings</span>
+    <button class="settings-close" onclick="toggleSettings()">&times;</button>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-group-title">Check-in Reminders</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Reminder interval</div>
+        <div class="settings-row-sub">How often to check if you're still there</div>
+      </div>
+      <div class="settings-row-control">
+        <input type="number" id="settingsCheckinInterval" value="10" min="1" max="120" onchange="updateCheckinInterval()">
+        <span>min</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Reminders enabled</div>
+        <div class="settings-row-sub">Toggle check-in popups on/off</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsCheckinEnabled" checked onchange="updateCheckinEnabled()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Check-in modal -->
@@ -960,6 +1068,70 @@
   }
 
   // ══════════════════════════════════════
+  // SETTINGS
+  // ══════════════════════════════════════
+  let checkinEnabled = true;
+
+  function toggleSettings() {
+    const drawer = document.getElementById('settingsDrawer');
+    const overlay = document.getElementById('settingsOverlay');
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+      drawer.classList.remove('open');
+      overlay.classList.remove('open');
+    } else {
+      drawer.classList.add('open');
+      overlay.classList.add('open');
+    }
+  }
+
+  function updateCheckinInterval() {
+    const val = parseInt(document.getElementById('settingsCheckinInterval').value) || 10;
+    checkinIntervalMs = val * 60 * 1000;
+    // Reschedule if timer is active
+    if (isRunning || lastPauseTime !== null) {
+      scheduleCheckin();
+    }
+    saveSettings();
+  }
+
+  function updateCheckinEnabled() {
+    checkinEnabled = document.getElementById('settingsCheckinEnabled').checked;
+    if (!checkinEnabled) {
+      clearTimeout(checkinTimer);
+    } else if (isRunning || lastPauseTime !== null) {
+      scheduleCheckin();
+    }
+    saveSettings();
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem('dot-timer-settings', JSON.stringify({
+        checkinIntervalMin: parseInt(document.getElementById('settingsCheckinInterval').value) || 10,
+        checkinEnabled: document.getElementById('settingsCheckinEnabled').checked
+      }));
+    } catch(e) {}
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem('dot-timer-settings');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.checkinIntervalMin) {
+          checkinIntervalMs = s.checkinIntervalMin * 60 * 1000;
+          document.getElementById('settingsCheckinInterval').value = s.checkinIntervalMin;
+        }
+        if (typeof s.checkinEnabled === 'boolean') {
+          checkinEnabled = s.checkinEnabled;
+          document.getElementById('settingsCheckinEnabled').checked = s.checkinEnabled;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // ══════════════════════════════════════
   // QUOTES
   // ══════════════════════════════════════
   const hourQuotes = [
@@ -1039,22 +1211,10 @@
   // ══════════════════════════════════════
   function showUserBadge(id) {
     const badge = document.getElementById('userBadge');
-    const avatar = document.getElementById('userAvatar');
     const name = document.getElementById('userName');
     if (!id) { badge.style.display = 'none'; return; }
-
     badge.style.display = 'flex';
     name.textContent = id;
-
-    // Generate initials from sync ID
-    const parts = id.replace(/[-_\.]/g, ' ').trim().split(/\s+/);
-    let initials;
-    if (parts.length >= 2) {
-      initials = (parts[0][0] + parts[1][0]).toUpperCase();
-    } else {
-      initials = id.slice(0, 2).toUpperCase();
-    }
-    avatar.textContent = initials;
   }
 
   // ══════════════════════════════════════
@@ -1153,6 +1313,17 @@
   }
 
   async function saveProgress() {
+    // Sync cumulative stats into today's history entry
+    const h = getHistory();
+    const key = getTodayKey();
+    if (h[key]) {
+      h[key].totalWorkMs = totalRunningMs;
+      h[key].totalPauseMs = totalPausedMs;
+      h[key].cycles = cycles;
+      h[key].earned = cycles * 100;
+      saveHistory(h);
+    }
+
     saveLocal();
     if (syncMode === 'cloud') {
       if (BIN_ID) await saveToBin();
@@ -1166,6 +1337,8 @@
     if (!id) { document.getElementById('syncIdInput').style.borderColor = 'var(--red)'; return; }
     SYNC_ID = id; syncMode = 'cloud';
     showUserBadge(id);
+
+    checkStaleSession(); // archive old day's data if needed
 
     const storedBinId = localStorage.getItem('dot-timer-bin-id');
     const storedSyncId = localStorage.getItem('dot-timer-sync-id');
@@ -1186,6 +1359,7 @@
 
   function startWithoutSync() {
     syncMode = 'local';
+    checkStaleSession(); // archive old day's data if needed
     const localState = loadLocal();
     if (localState) applyState(localState);
     showUserBadge(null);
@@ -1268,6 +1442,8 @@
     totalEarningsEl.textContent = cycles * 100;
   }
 
+  let dayEndTriggered = false; // prevent multiple resets in same second
+
   function updateDayBar() {
     const now = new Date();
     const [sh,sm] = dayStartInput.value.split(':').map(Number);
@@ -1280,6 +1456,103 @@
     dayBarFill.style.width = `${pct}%`;
     const hl = Math.max(0, remMs/3600000), hw = Math.floor(hl), ml = Math.round((hl-hw)*60);
     dayHoursLeft.innerHTML = `<span>${hw}h ${ml}m</span> left`;
+
+    // ── Auto-reset at end time ──
+    checkDayEnd(now, end);
+  }
+
+  function checkDayEnd(now, end) {
+    // If we've passed end time and haven't triggered reset yet
+    if (now >= end && !dayEndTriggered) {
+      dayEndTriggered = true;
+      autoResetForNewDay();
+    }
+    // Reset the flag when we're before end time (new cycle)
+    if (now < end) {
+      dayEndTriggered = false;
+    }
+  }
+
+  function autoResetForNewDay() {
+    // 1. End any active session and log it to history
+    endCurrentSession();
+
+    // 2. Update today's history entry with final stats
+    const h = getHistory();
+    const key = getTodayKey();
+    if (h[key]) {
+      h[key].totalWorkMs = totalRunningMs;
+      h[key].totalPauseMs = totalPausedMs;
+      h[key].cycles = cycles;
+      h[key].earned = cycles * 100;
+      saveHistory(h);
+    }
+
+    // 3. Save cloud state before reset
+    saveProgress();
+
+    // 4. Silent reset (no confirm dialog)
+    isRunning = false;
+    totalRunningMs = 0;
+    totalPausedMs = 0;
+    elapsedCycleMs = 0;
+    cycles = 0;
+    lastTickTime = null;
+    lastPauseTime = null;
+    goalCelebrated = false;
+    sessionDate = new Date().toDateString();
+    clearTimeout(checkinTimer);
+    stopPauseDisplay();
+
+    playPauseBtn.textContent = 'Play';
+    playPauseBtn.classList.add('primary');
+    statusEl.className = 'status';
+    statusText.textContent = 'Idle';
+
+    // Clear bills UI
+    const g = document.querySelector('.bills-grid');
+    if (g) g.remove();
+    if (earningsEmpty) earningsEmpty.style.display = '';
+
+    // Close any open modals
+    checkinModal.classList.remove('visible');
+    document.getElementById('celebrationOverlay').classList.remove('visible');
+
+    updateDots();
+    updateTimeDisplay();
+    updateStats();
+    saveProgress();
+
+    console.log('[Dot Timer] Day ended. Timer reset for new day.');
+  }
+
+  // ── Check on page load if previous session is from a past day ──
+  function checkStaleSession() {
+    const localState = loadLocal();
+    if (!localState) return;
+
+    const today = new Date().toDateString();
+    if (localState.sessionDate && localState.sessionDate !== today) {
+      // Previous day's data exists. Save it to history if there was any work.
+      if (localState.totalRunningMs > 0) {
+        const h = getHistory();
+        // Figure out the old date key from sessionDate string
+        const oldDate = new Date(localState.sessionDate);
+        const oldKey = `${oldDate.getFullYear()}-${String(oldDate.getMonth()+1).padStart(2,'0')}-${String(oldDate.getDate()).padStart(2,'0')}`;
+        if (!h[oldKey]) {
+          h[oldKey] = { date: oldKey, totalWorkMs: 0, totalPauseMs: 0, sessions: [], firstStart: null, lastEnd: null, cycles: 0, earned: 0 };
+        }
+        // Merge final stats if not already there
+        h[oldKey].totalWorkMs = Math.max(h[oldKey].totalWorkMs, localState.totalRunningMs);
+        h[oldKey].totalPauseMs = Math.max(h[oldKey].totalPauseMs, localState.totalPausedMs);
+        h[oldKey].cycles = Math.max(h[oldKey].cycles, localState.cycles || 0);
+        h[oldKey].earned = Math.max(h[oldKey].earned, (localState.cycles || 0) * 100);
+        saveHistory(h);
+      }
+
+      // Clear the saved state so applyState starts fresh
+      localStorage.removeItem('dot-timer-state');
+    }
   }
 
   function addBill(hourNum, silent = false) {
@@ -1298,6 +1571,7 @@
   // ── Check-in ──
   function scheduleCheckin() {
     clearTimeout(checkinTimer);
+    if (!checkinEnabled) return;
     checkinTimer = setTimeout(showCheckin, checkinIntervalMs);
   }
 
@@ -1454,6 +1728,7 @@
   setInterval(updateDayBar, 1000);
   updateDayBar();
 
+  loadSettings();
   buildDots(); updateDots(); updateStats();
 </script>
 </body>
