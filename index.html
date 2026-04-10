@@ -959,6 +959,28 @@
         </label>
       </div>
     </div>
+    <div class="settings-row" id="cameraDeviceRow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Camera</div>
+        <div class="settings-row-sub">Select which camera to use</div>
+      </div>
+      <div class="settings-row-control">
+        <select id="cameraDeviceSelect" onchange="switchCamera()" style="
+          font-family:'JetBrains Mono',monospace;font-size:11px;
+          background:var(--surface);border:1px solid var(--border);color:var(--text);
+          padding:6px 8px;border-radius:6px;outline:none;max-width:160px;
+        "></select>
+      </div>
+    </div>
+    <div class="settings-row" id="cameraTestRow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Test camera</div>
+        <div class="settings-row-sub" id="cameraStatusText">Click to preview and take a test photo</div>
+      </div>
+      <div class="settings-row-control">
+        <button class="btn" onclick="startCameraSetup()" style="padding:6px 14px;font-size:11px;">Test</button>
+      </div>
+    </div>
     <div class="settings-row">
       <div>
         <div class="settings-row-label">Photo interval</div>
@@ -1014,6 +1036,42 @@
   <div class="camera-preview-time" id="previewTime"></div>
   <button class="modal-btn" onclick="dismissPreview()">Got it</button>
 </div>
+
+<!-- Camera setup / tutorial overlay -->
+<div class="camera-preview-overlay" id="cameraSetupOverlay">
+  <div style="text-align:center;max-width:420px;width:90%;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:16px;">Camera Setup</div>
+
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dimmer);margin-bottom:12px;" id="setupStep">Step 1: Check your camera feed below</div>
+
+    <video id="setupVideo" autoplay playsinline style="
+      width:100%;max-width:360px;border-radius:12px;border:2px solid var(--border);
+      margin-bottom:12px;background:#000;
+    "></video>
+
+    <div style="margin-bottom:12px;">
+      <select id="setupCameraSelect" onchange="switchSetupCamera()" style="
+        font-family:'JetBrains Mono',monospace;font-size:12px;
+        background:var(--surface);border:1px solid var(--border);color:var(--text);
+        padding:8px 12px;border-radius:8px;outline:none;width:100%;max-width:360px;
+      "></select>
+    </div>
+
+    <div id="setupTestResult" style="margin-bottom:12px;display:none;">
+      <img id="setupTestImg" style="width:120px;height:90px;border-radius:8px;border:1px solid var(--border);object-fit:cover;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);margin-top:6px;">Test photo captured</div>
+    </div>
+
+    <div id="setupError" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);margin-bottom:12px;display:none;"></div>
+
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn" onclick="takeSetupTestPhoto()">Test Photo</button>
+      <button class="btn primary" onclick="confirmCameraSetup()">Looks good</button>
+      <button class="btn stop-btn" onclick="cancelCameraSetup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <video id="cameraVideo" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:320px;height:240px;"></video>
 <canvas id="cameraCanvas" width="640" height="480" style="display:none;"></canvas>
 
@@ -1278,7 +1336,8 @@
         cameraEnabled: document.getElementById('settingsCameraEnabled').checked,
         cameraIntervalMin: parseInt(document.getElementById('settingsCameraInterval').value) || 30,
         faceDetectEnabled: document.getElementById('settingsFaceDetect').checked,
-        clockEnabled: document.getElementById('settingsClockEnabled').checked
+        clockEnabled: document.getElementById('settingsClockEnabled').checked,
+        selectedDeviceId: selectedDeviceId
       }));
     } catch(e) {}
   }
@@ -1312,6 +1371,9 @@
           clockEnabled = s.clockEnabled;
           document.getElementById('settingsClockEnabled').checked = s.clockEnabled;
           document.getElementById('realClock').classList.toggle('hidden', !s.clockEnabled);
+        }
+        if (s.selectedDeviceId) {
+          selectedDeviceId = s.selectedDeviceId;
         }
       }
     } catch(e) {}
@@ -1952,17 +2014,26 @@
   let cameraStream = null;
   let faceDetectEnabled = false;
   let faceDetectInterval = null;
-  let todayPhotos = []; // stored as data URLs for today
+  let todayPhotos = [];
+  let selectedDeviceId = null; // saved camera device ID
+  let setupStream = null; // stream used during setup
 
+  // ── When user toggles camera ON, launch the setup flow ──
   function updateCameraEnabled() {
     cameraEnabled = document.getElementById('settingsCameraEnabled').checked;
     saveSettings();
-    if (cameraEnabled && isRunning) {
-      startCamera();
-      scheduleCameraSnap();
-    } else if (!cameraEnabled) {
+
+    if (cameraEnabled) {
+      // Show device row and test row in settings
+      document.getElementById('cameraDeviceRow').style.display = '';
+      document.getElementById('cameraTestRow').style.display = '';
+      // Launch setup tutorial
+      startCameraSetup();
+    } else {
       stopCamera();
       clearTimeout(cameraTimer);
+      document.getElementById('cameraDeviceRow').style.display = 'none';
+      document.getElementById('cameraTestRow').style.display = 'none';
     }
   }
 
@@ -1976,25 +2047,193 @@
   function updateFaceDetect() {
     faceDetectEnabled = document.getElementById('settingsFaceDetect').checked;
     saveSettings();
-    if (faceDetectEnabled && cameraEnabled && isRunning) {
-      startFaceDetection();
-    } else {
-      stopFaceDetection();
+    if (faceDetectEnabled && cameraEnabled && isRunning) startFaceDetection();
+    else stopFaceDetection();
+  }
+
+  // ── Camera setup tutorial ──
+  async function startCameraSetup() {
+    const overlay = document.getElementById('cameraSetupOverlay');
+    const errorEl = document.getElementById('setupError');
+    const stepEl = document.getElementById('setupStep');
+    const testResult = document.getElementById('setupTestResult');
+
+    errorEl.style.display = 'none';
+    testResult.style.display = 'none';
+    stepEl.textContent = 'Step 1: Granting camera access...';
+    overlay.classList.add('visible');
+
+    try {
+      // First ask for permission with a basic request
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      tempStream.getTracks().forEach(t => t.stop()); // close it, we just needed permission
+
+      // Now enumerate devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+      if (videoDevices.length === 0) {
+        errorEl.textContent = 'No cameras found on this device.';
+        errorEl.style.display = '';
+        stepEl.textContent = 'No cameras detected';
+        return;
+      }
+
+      // Populate both selectors (setup overlay and settings)
+      const setupSelect = document.getElementById('setupCameraSelect');
+      const settingsSelect = document.getElementById('cameraDeviceSelect');
+      setupSelect.innerHTML = '';
+      settingsSelect.innerHTML = '';
+
+      videoDevices.forEach((d, i) => {
+        const label = d.label || `Camera ${i + 1}`;
+        const opt1 = new Option(label, d.deviceId);
+        const opt2 = new Option(label, d.deviceId);
+        setupSelect.appendChild(opt1);
+        settingsSelect.appendChild(opt2);
+      });
+
+      // If we have a saved device, select it
+      if (selectedDeviceId) {
+        setupSelect.value = selectedDeviceId;
+        settingsSelect.value = selectedDeviceId;
+      }
+
+      stepEl.textContent = 'Step 2: Pick your camera and check the preview';
+
+      // Start preview with selected device
+      await startSetupPreview(setupSelect.value);
+
+    } catch (e) {
+      console.error('Camera setup failed:', e);
+      errorEl.style.display = '';
+      if (e.name === 'NotAllowedError') {
+        errorEl.textContent = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+      } else if (e.name === 'NotFoundError') {
+        errorEl.textContent = 'No camera found. Make sure a camera is connected and not in use by another app.';
+      } else {
+        errorEl.textContent = `Camera error: ${e.message}`;
+      }
+      stepEl.textContent = 'Camera setup failed';
     }
   }
 
+  async function startSetupPreview(deviceId) {
+    // Stop any existing setup stream
+    if (setupStream) {
+      setupStream.getTracks().forEach(t => t.stop());
+      setupStream = null;
+    }
+
+    try {
+      setupStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId }, width: 640, height: 480 }
+      });
+      document.getElementById('setupVideo').srcObject = setupStream;
+    } catch (e) {
+      // Fallback: try without exact constraint
+      try {
+        setupStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: deviceId, width: 640, height: 480 }
+        });
+        document.getElementById('setupVideo').srcObject = setupStream;
+      } catch (e2) {
+        document.getElementById('setupError').textContent = `Can't access this camera: ${e2.message}`;
+        document.getElementById('setupError').style.display = '';
+      }
+    }
+  }
+
+  async function switchSetupCamera() {
+    const deviceId = document.getElementById('setupCameraSelect').value;
+    document.getElementById('setupTestResult').style.display = 'none';
+    document.getElementById('setupError').style.display = 'none';
+    await startSetupPreview(deviceId);
+  }
+
+  function takeSetupTestPhoto() {
+    if (!setupStream) return;
+    const video = document.getElementById('setupVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 640, 480);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+    document.getElementById('setupTestImg').src = dataUrl;
+    document.getElementById('setupTestResult').style.display = '';
+    document.getElementById('setupStep').textContent = 'Step 3: If the test photo looks right, click "Looks good"';
+  }
+
+  function confirmCameraSetup() {
+    // Save selected device
+    selectedDeviceId = document.getElementById('setupCameraSelect').value;
+    document.getElementById('cameraDeviceSelect').value = selectedDeviceId;
+    localStorage.setItem('dot-timer-camera-device', selectedDeviceId);
+
+    // Stop setup stream
+    if (setupStream) {
+      setupStream.getTracks().forEach(t => t.stop());
+      setupStream = null;
+    }
+    document.getElementById('setupVideo').srcObject = null;
+    document.getElementById('cameraSetupOverlay').classList.remove('visible');
+
+    // Update status text
+    document.getElementById('cameraStatusText').textContent = 'Camera ready';
+    document.getElementById('cameraStatusText').style.color = 'var(--green)';
+
+    cameraEnabled = true;
+    document.getElementById('settingsCameraEnabled').checked = true;
+    saveSettings();
+
+    // If timer is running, start the camera for real
+    if (isRunning) {
+      startCamera();
+      scheduleCameraSnap();
+    }
+  }
+
+  function cancelCameraSetup() {
+    if (setupStream) {
+      setupStream.getTracks().forEach(t => t.stop());
+      setupStream = null;
+    }
+    document.getElementById('setupVideo').srcObject = null;
+    document.getElementById('cameraSetupOverlay').classList.remove('visible');
+
+    // If this was the first enable, turn it back off
+    cameraEnabled = false;
+    document.getElementById('settingsCameraEnabled').checked = false;
+    saveSettings();
+  }
+
+  async function switchCamera() {
+    selectedDeviceId = document.getElementById('cameraDeviceSelect').value;
+    localStorage.setItem('dot-timer-camera-device', selectedDeviceId);
+    if (cameraStream) {
+      stopCamera();
+      await startCamera();
+    }
+  }
+
+  // ── Main camera start/stop (for actual timer use) ──
   async function startCamera() {
     if (cameraStream) return;
+    if (!selectedDeviceId) {
+      selectedDeviceId = localStorage.getItem('dot-timer-camera-device');
+    }
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+      const constraints = selectedDeviceId
+        ? { video: { deviceId: { exact: selectedDeviceId }, width: 640, height: 480 } }
+        : { video: { width: 640, height: 480, facingMode: 'user' } };
+      cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
       document.getElementById('cameraVideo').srcObject = cameraStream;
       document.getElementById('cameraDot').classList.add('on');
       if (faceDetectEnabled) startFaceDetection();
     } catch (e) {
-      console.error('Camera access denied:', e);
-      cameraEnabled = false;
-      document.getElementById('settingsCameraEnabled').checked = false;
-      saveSettings();
+      console.error('Camera start failed:', e);
+      document.getElementById('cameraStatusText').textContent = 'Camera failed: ' + e.message;
+      document.getElementById('cameraStatusText').style.color = 'var(--red)';
     }
   }
 
@@ -2036,12 +2275,10 @@
   }
 
   function takePhoto() {
-    // Flash
     const flash = document.getElementById('cameraFlash');
     flash.classList.add('flash');
     setTimeout(() => flash.classList.remove('flash'), 200);
 
-    // Capture
     const video = document.getElementById('cameraVideo');
     const canvas = document.getElementById('cameraCanvas');
     const ctx = canvas.getContext('2d');
@@ -2050,22 +2287,18 @@
 
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    // Store photo
     todayPhotos.push({ data: dataUrl, time: timeStr });
     savePhotosLocal();
 
-    // Show preview briefly
     const preview = document.getElementById('cameraPreview');
     document.getElementById('previewImg').src = dataUrl;
     document.getElementById('previewTime').textContent = `Captured at ${timeStr}`;
     preview.classList.add('visible');
 
-    // Auto-dismiss after 3 sec
     setTimeout(() => {
       if (preview.classList.contains('visible')) preview.classList.remove('visible');
     }, 3000);
 
-    // Schedule next
     scheduleCameraSnap();
   }
 
@@ -2075,11 +2308,9 @@
 
   function savePhotosLocal() {
     try {
-      // Only keep last 20 photos to avoid localStorage limits
       const trimmed = todayPhotos.slice(-20);
       localStorage.setItem('dot-timer-photos-' + getTodayKey(), JSON.stringify(trimmed));
     } catch(e) {
-      // If storage full, drop oldest
       todayPhotos = todayPhotos.slice(-5);
     }
   }
@@ -2091,7 +2322,19 @@
     } catch(e) {}
   }
 
-  // ── Face detection (simple brightness-based presence check) ──
+  // Show camera device row if camera was previously enabled
+  function initCameraUI() {
+    const savedDevice = localStorage.getItem('dot-timer-camera-device');
+    if (savedDevice) selectedDeviceId = savedDevice;
+    if (cameraEnabled) {
+      document.getElementById('cameraDeviceRow').style.display = '';
+      document.getElementById('cameraTestRow').style.display = '';
+      document.getElementById('cameraStatusText').textContent = 'Camera ready';
+      document.getElementById('cameraStatusText').style.color = 'var(--green)';
+    }
+  }
+
+  // ── Face detection (brightness + motion based presence check) ──
   function startFaceDetection() {
     stopFaceDetection();
     const video = document.getElementById('cameraVideo');
@@ -2195,6 +2438,7 @@
 
   loadPhotosLocal();
   loadSettings();
+  initCameraUI();
   buildDots(); updateDots(); updateStats();
 </script>
 </body>
