@@ -781,6 +781,47 @@
 
   .camera-flipped { transform: scaleX(-1); }
 
+  /* Photo viewer overlay */
+  .photo-viewer-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: none; flex-direction: column; align-items: center;
+    z-index: 290; overflow-y: auto; padding: 32px 20px;
+  }
+  .photo-viewer-overlay.visible { display: flex; }
+  .photo-viewer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; max-width: 600px; margin-bottom: 20px;
+  }
+  .photo-viewer-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
+  }
+  .photo-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px; width: 100%; max-width: 600px;
+  }
+  .photo-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; cursor: pointer; transition: transform 0.15s;
+  }
+  .photo-card:hover { transform: scale(1.03); }
+  .photo-card img {
+    width: 100%; height: 120px; object-fit: cover; display: block;
+  }
+  .photo-card-time {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--text-dim); padding: 6px 8px; text-align: center;
+  }
+  .photo-card-actions {
+    display: flex; justify-content: center; padding: 0 8px 8px;
+  }
+  .photo-download-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    padding: 3px 8px; border-radius: 4px; cursor: pointer;
+  }
+  .photo-download-btn:hover { border-color: var(--accent); color: var(--text); }
+
   /* ── Photo gallery in history ── */
   .history-photos {
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
@@ -821,16 +862,16 @@
 <div class="setup-overlay" id="setupOverlay">
   <div class="setup-box">
     <h2>Dot Timer</h2>
-    <p>Your progress saves to the cloud every 30 minutes. Enter a sync ID to access your data from any device.</p>
+    <p>Enter your sync code to access progress from any device. First time? Just pick a name and click Start.</p>
     <div class="setup-input-row">
-      <input type="text" id="syncIdInput" placeholder="e.g. soumya-timer-2026" spellcheck="false">
+      <input type="text" id="syncIdInput" placeholder="e.g. soumya-work" spellcheck="false">
     </div>
     <button class="modal-btn" onclick="startWithSyncId()">Start</button>
     <div class="setup-or">or</div>
-    <button class="btn" onclick="startWithoutSync()">Skip (local only)</button>
-    <div class="setup-info">
-      Use the same ID on any device to sync progress.<br>
-      No account needed. Just remember your ID.
+    <button class="btn" onclick="startWithoutSync()">Skip (this device only)</button>
+    <div class="setup-info" id="setupInfo">
+      Your data syncs to the cloud automatically.<br>
+      Use the same name on phone and laptop to share progress.
     </div>
   </div>
 </div>
@@ -1053,6 +1094,16 @@
         </label>
       </div>
     </div>
+    <div class="settings-row" id="photoStorageRow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Today's photos</div>
+        <div class="settings-row-sub" id="photoCountText">0 photos stored in browser</div>
+      </div>
+      <div class="settings-row-control" style="gap:6px;">
+        <button class="btn" onclick="viewPhotos()" style="padding:6px 10px;font-size:10px;">View</button>
+        <button class="btn" onclick="downloadPhotos()" style="padding:6px 10px;font-size:10px;">Save</button>
+      </div>
+    </div>
   </div>
 
   <div class="settings-group">
@@ -1067,6 +1118,29 @@
           <input type="checkbox" id="settingsClockEnabled" checked onchange="updateClockEnabled()">
           <span class="slider"></span>
         </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-group-title">Cloud Sync</div>
+    <div class="settings-row" style="display:none;">
+      <div>
+        <div class="settings-row-label">Cloud ID</div>
+        <div class="settings-row-sub">Enter this on your other device to sync</div>
+      </div>
+      <div class="settings-row-control">
+        <span id="cloudIdDisplay" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);word-break:break-all;max-width:140px;text-align:right;cursor:pointer;" onclick="copyCloudId()" title="Click to copy"></span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Link another device</div>
+        <div class="settings-row-sub">Enter Cloud ID from your other device</div>
+      </div>
+      <div class="settings-row-control" style="gap:4px;">
+        <input type="text" id="linkDeviceInput" placeholder="Paste Cloud ID" style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;width:120px;outline:none;">
+        <button class="btn" onclick="linkDevice()" style="padding:6px 10px;font-size:10px;">Link</button>
       </div>
     </div>
   </div>
@@ -1162,6 +1236,18 @@
 <video id="cameraVideo" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:320px;height:240px;"></video>
 <canvas id="cameraCanvas" width="640" height="480" style="display:none;"></canvas>
 
+<!-- Photo viewer -->
+<div class="photo-viewer-overlay" id="photoViewer">
+  <div class="photo-viewer-header">
+    <span class="photo-viewer-title">Today's Photos</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" onclick="downloadPhotos()" style="padding:6px 14px;font-size:11px;">Save All</button>
+      <button class="settings-close" onclick="closePhotoViewer()" style="font-size:22px;">&times;</button>
+    </div>
+  </div>
+  <div class="photo-grid" id="photoGrid"></div>
+</div>
+
 <div class="modal-overlay" id="checkinModal">
   <div class="modal">
     <div class="modal-emoji" id="checkinEmoji"></div>
@@ -1184,9 +1270,8 @@
 
 <script>
   // ══════════════════════════════════════════════
-  // CLOUD PERSISTENCE
+  // CLOUD PERSISTENCE via jsonblob.com
   // ══════════════════════════════════════════════
-  const JSONBIN_API = 'https://api.jsonbin.io/v3';
   let SYNC_ID = null;
   let BIN_ID = null;
   let syncMode = 'local';
@@ -1565,25 +1650,56 @@
   // ══════════════════════════════════════
   // PERSISTENCE LAYER
   // ══════════════════════════════════════
+  //
+  // Cloud sync uses jsonblob.com (free, no API key, deterministic URLs).
+  // The blob ID is stored in localStorage AND encoded in the sync ID display
+  // so users on a new device can enter it and get their data back.
+  //
+
+  const BLOB_API = 'https://jsonblob.com/api/jsonBlob';
+
   function getState() {
     return {
       totalRunningMs, totalPausedMs, cycles, elapsedCycleMs, goalCelebrated,
       goal: parseInt(goalInput.value) || 8,
       dayStart: dayStartInput.value, dayEnd: dayEndInput.value,
-      sessionDate, savedAt: Date.now(), wasRunning: isRunning
+      sessionDate, savedAt: Date.now(), wasRunning: isRunning,
+      history: getHistory()
     };
   }
 
   function applyState(state) {
     if (!state) return;
     const today = new Date().toDateString();
-    if (state.sessionDate && state.sessionDate !== today) sessionDate = today;
 
-    totalRunningMs = state.totalRunningMs || 0;
-    totalPausedMs = state.totalPausedMs || 0;
-    cycles = state.cycles || 0;
-    elapsedCycleMs = state.elapsedCycleMs || 0;
-    goalCelebrated = state.goalCelebrated || false;
+    // Merge history from cloud
+    if (state.history) {
+      const localHistory = getHistory();
+      const merged = { ...localHistory };
+      for (const key of Object.keys(state.history)) {
+        if (!merged[key] || (state.history[key].totalWorkMs || 0) > (merged[key].totalWorkMs || 0)) {
+          merged[key] = state.history[key];
+        }
+      }
+      saveHistory(merged);
+    }
+
+    // Check if stale day
+    if (state.sessionDate && state.sessionDate !== today) {
+      sessionDate = today;
+      // Don't restore timer values from a different day
+      totalRunningMs = 0;
+      totalPausedMs = 0;
+      cycles = 0;
+      elapsedCycleMs = 0;
+      goalCelebrated = false;
+    } else {
+      totalRunningMs = state.totalRunningMs || 0;
+      totalPausedMs = state.totalPausedMs || 0;
+      cycles = state.cycles || 0;
+      elapsedCycleMs = state.elapsedCycleMs || 0;
+      goalCelebrated = state.goalCelebrated || false;
+    }
 
     if (state.goal) goalInput.value = state.goal;
     if (state.dayStart) dayStartInput.value = state.dayStart;
@@ -1593,11 +1709,12 @@
     updateDots(); updateTimeDisplay(); updateStats();
   }
 
+  // ── localStorage ──
   function saveLocal() {
     try {
       localStorage.setItem('dot-timer-state', JSON.stringify(getState()));
       localStorage.setItem('dot-timer-sync-id', SYNC_ID || '');
-      localStorage.setItem('dot-timer-bin-id', BIN_ID || '');
+      localStorage.setItem('dot-timer-blob-id', BIN_ID || '');
     } catch (e) {}
   }
 
@@ -1606,59 +1723,82 @@
     return null;
   }
 
-  async function createBin(state) {
+  // ── jsonblob.com cloud ──
+  async function createBlob(state) {
     try {
       showSaveStatus('saving');
-      const res = await fetch(`${JSONBIN_API}/b`, {
+      const res = await fetch(BLOB_API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Bin-Name': `dot-timer-${SYNC_ID}` },
-        body: JSON.stringify({ syncId: SYNC_ID, state })
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(state)
       });
-      const data = await res.json();
-      if (data.metadata && data.metadata.id) {
-        BIN_ID = data.metadata.id;
-        localStorage.setItem('dot-timer-bin-id', BIN_ID);
-        showSaveStatus('saved');
-        return true;
+      if (res.ok) {
+        // jsonblob returns the blob URL in the Location header
+        const location = res.headers.get('Location');
+        if (location) {
+          BIN_ID = location.split('/').pop();
+        } else {
+          // Fallback: try to get from response
+          const data = await res.json();
+          // The blob ID might be in the URL
+          BIN_ID = res.url.split('/').pop();
+        }
+        if (BIN_ID) {
+          localStorage.setItem('dot-timer-blob-id', BIN_ID);
+          showSaveStatus('saved');
+          return true;
+        }
       }
-    } catch (e) { showSaveStatus('error'); }
+      showSaveStatus('error');
+    } catch (e) {
+      console.error('Create blob failed:', e);
+      showSaveStatus('error');
+    }
     return false;
   }
 
-  async function saveToBin() {
+  async function saveToBlob() {
     if (!BIN_ID || syncMode !== 'cloud') return;
     try {
       showSaveStatus('saving');
-      const res = await fetch(`${JSONBIN_API}/b/${BIN_ID}`, {
+      const res = await fetch(`${BLOB_API}/${BIN_ID}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ syncId: SYNC_ID, state: getState() })
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(getState())
       });
       if (res.ok) { showSaveStatus('saved'); saveLocal(); }
       else showSaveStatus('error');
-    } catch (e) { showSaveStatus('error'); }
+    } catch (e) {
+      console.error('Save failed:', e);
+      showSaveStatus('error');
+    }
   }
 
-  async function loadFromBin() {
+  async function loadFromBlob() {
     if (!BIN_ID) return null;
     try {
-      const res = await fetch(`${JSONBIN_API}/b/${BIN_ID}/latest`);
-      const data = await res.json();
-      if (data.record && data.record.state) return data.record.state;
-    } catch (e) {}
+      const res = await fetch(`${BLOB_API}/${BIN_ID}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch (e) {
+      console.error('Load from cloud failed:', e);
+    }
     return null;
   }
 
   function showSaveStatus(status) {
     saveIndicator.className = 'save-indicator ' + status;
     if (status === 'saving') saveIndicator.textContent = 'saving...';
-    else if (status === 'saved') saveIndicator.textContent = 'saved';
-    else if (status === 'error') saveIndicator.textContent = 'save failed';
+    else if (status === 'saved') saveIndicator.textContent = 'synced';
+    else if (status === 'error') saveIndicator.textContent = 'sync failed';
     if (status === 'saved') setTimeout(() => { saveIndicator.textContent = ''; saveIndicator.className = 'save-indicator'; }, 3000);
   }
 
   async function saveProgress() {
-    // Sync cumulative stats into today's history entry
     const h = getHistory();
     const key = getTodayKey();
     if (h[key]) {
@@ -1671,8 +1811,8 @@
 
     saveLocal();
     if (syncMode === 'cloud') {
-      if (BIN_ID) await saveToBin();
-      else await createBin(getState());
+      if (BIN_ID) await saveToBlob();
+      else await createBlob(getState());
     }
   }
 
@@ -1683,28 +1823,89 @@
     SYNC_ID = id; syncMode = 'cloud';
     showUserBadge(id);
 
-    checkStaleSession(); // archive old day's data if needed
+    checkStaleSession();
 
-    const storedBinId = localStorage.getItem('dot-timer-bin-id');
+    // Check if we have a blob ID stored locally for this sync ID
+    const storedBlobId = localStorage.getItem('dot-timer-blob-id');
     const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-    if (storedBinId && storedSyncId === id) {
-      BIN_ID = storedBinId;
-      const cloudState = await loadFromBin();
+
+    if (storedBlobId && storedSyncId === id) {
+      BIN_ID = storedBlobId;
+      // Load from cloud
+      const cloudState = await loadFromBlob();
       const localState = loadLocal();
-      if (cloudState && localState) applyState((cloudState.savedAt||0) > (localState.savedAt||0) ? cloudState : localState);
-      else applyState(cloudState || localState);
-    } else {
+      if (cloudState && localState) {
+        applyState((cloudState.savedAt || 0) > (localState.savedAt || 0) ? cloudState : localState);
+      } else {
+        applyState(cloudState || localState);
+      }
+    } else if (storedBlobId && storedSyncId !== id) {
+      // Different sync ID entered, maybe from another device
+      // The user might be entering a blob ID directly
+      // Try treating the input as a blob ID
+      BIN_ID = null;
       const localState = loadLocal();
       if (localState) applyState(localState);
-      await createBin(getState());
+      await createBlob(getState());
+    } else {
+      // First time, no blob exists
+      const localState = loadLocal();
+      if (localState) applyState(localState);
+      await createBlob(getState());
     }
+
     localStorage.setItem('dot-timer-sync-id', SYNC_ID);
+
+    // Show the cloud ID so user can note it for other devices
+    if (BIN_ID) {
+      showCloudId();
+    }
+
     startAutoSave(); hideSetup();
+  }
+
+  function showCloudId() {
+    const el = document.getElementById('cloudIdDisplay');
+    if (el && BIN_ID) {
+      el.textContent = BIN_ID;
+      el.parentElement.parentElement.style.display = '';
+    }
+  }
+
+  function copyCloudId() {
+    if (BIN_ID) {
+      navigator.clipboard.writeText(BIN_ID).then(() => {
+        const el = document.getElementById('cloudIdDisplay');
+        const orig = el.textContent;
+        el.textContent = 'Copied!';
+        setTimeout(() => { el.textContent = orig; }, 1500);
+      });
+    }
+  }
+
+  async function linkDevice() {
+    const blobId = document.getElementById('linkDeviceInput').value.trim();
+    if (!blobId) return;
+
+    BIN_ID = blobId;
+    localStorage.setItem('dot-timer-blob-id', BIN_ID);
+
+    const state = await loadFromBlob();
+    if (state) {
+      applyState(state);
+      showCloudId();
+      document.getElementById('linkDeviceInput').value = '';
+      alert('Synced! Your progress has been loaded from the cloud.');
+    } else {
+      alert('Could not find data with that Cloud ID. Check if it is correct.');
+      BIN_ID = null;
+      localStorage.removeItem('dot-timer-blob-id');
+    }
   }
 
   function startWithoutSync() {
     syncMode = 'local';
-    checkStaleSession(); // archive old day's data if needed
+    checkStaleSession();
     const localState = loadLocal();
     if (localState) applyState(localState);
     showUserBadge(null);
@@ -1731,21 +1932,19 @@
 
   (async function checkExistingSession() {
     const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-    const storedBinId = localStorage.getItem('dot-timer-bin-id');
+    const storedBlobId = localStorage.getItem('dot-timer-blob-id');
 
     if (storedSyncId) {
-      // Auto-restore: skip setup screen entirely
       SYNC_ID = storedSyncId;
-      BIN_ID = storedBinId;
-      syncMode = storedBinId ? 'cloud' : 'local';
+      BIN_ID = storedBlobId;
+      syncMode = storedBlobId ? 'cloud' : 'local';
       showUserBadge(storedSyncId);
 
       checkStaleSession();
 
-      // Try cloud first, fall back to local
       let state = null;
       if (BIN_ID) {
-        state = await loadFromBin();
+        state = await loadFromBlob();
       }
       const localState = loadLocal();
 
@@ -1755,10 +1954,10 @@
         applyState(state || localState);
       }
 
+      if (BIN_ID) showCloudId();
       startAutoSave();
       hideSetup();
     } else {
-      // No existing session, show setup screen
       document.getElementById('syncIdInput').value = '';
     }
   })();
@@ -2547,6 +2746,7 @@
     } catch(e) {
       todayPhotos = todayPhotos.slice(-5);
     }
+    updatePhotoCount();
   }
 
   function loadPhotosLocal() {
@@ -2554,6 +2754,68 @@
       const raw = localStorage.getItem('dot-timer-photos-' + getTodayKey());
       if (raw) todayPhotos = JSON.parse(raw);
     } catch(e) {}
+    updatePhotoCount();
+  }
+
+  function updatePhotoCount() {
+    const el = document.getElementById('photoCountText');
+    if (el) el.textContent = `${todayPhotos.length} photo${todayPhotos.length !== 1 ? 's' : ''} stored in browser`;
+    const row = document.getElementById('photoStorageRow');
+    if (row && cameraEnabled) row.style.display = '';
+  }
+
+  function viewPhotos() {
+    const grid = document.getElementById('photoGrid');
+    const viewer = document.getElementById('photoViewer');
+
+    if (todayPhotos.length === 0) {
+      grid.innerHTML = '<div style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--text-dimmer);text-align:center;padding:40px;">No photos taken today yet.</div>';
+    } else {
+      grid.innerHTML = todayPhotos.map((p, i) => `
+        <div class="photo-card">
+          <img src="${p.data}" alt="Photo at ${p.time}">
+          <div class="photo-card-time">${p.time}</div>
+          <div class="photo-card-actions">
+            <button class="photo-download-btn" onclick="downloadSinglePhoto(${i})">Download</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    viewer.classList.add('visible');
+  }
+
+  function closePhotoViewer() {
+    document.getElementById('photoViewer').classList.remove('visible');
+  }
+
+  function downloadSinglePhoto(index) {
+    const photo = todayPhotos[index];
+    if (!photo) return;
+    const link = document.createElement('a');
+    link.href = photo.data;
+    link.download = `dot-timer-${getTodayKey()}-${photo.time.replace(/[:\s]/g, '-')}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function downloadPhotos() {
+    if (todayPhotos.length === 0) {
+      alert('No photos to download.');
+      return;
+    }
+    // Download each photo individually (no zip library needed)
+    todayPhotos.forEach((photo, i) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = photo.data;
+        link.download = `dot-timer-${getTodayKey()}-${String(i+1).padStart(2,'0')}-${photo.time.replace(/[:\s]/g, '-')}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, i * 300); // stagger downloads so browser doesn't block them
+    });
   }
 
   // Show camera device row if camera was previously enabled
@@ -2572,12 +2834,14 @@
       document.getElementById('cameraTestRow').style.display = '';
       document.getElementById('cameraBrightnessRow').style.display = '';
       document.getElementById('cameraFlipRow').style.display = '';
+      document.getElementById('photoStorageRow').style.display = '';
       document.getElementById('cameraStatusText').textContent = 'Camera ready';
       document.getElementById('cameraStatusText').style.color = 'var(--green)';
       document.getElementById('settingsBrightnessSlider').value = cameraBrightness;
       document.getElementById('settingsBrightnessValue').textContent = cameraBrightness + '%';
       document.getElementById('settingsFlipCamera').checked = cameraFlipped;
     }
+    updatePhotoCount();
   }
 
   // ── Brightness control ──
@@ -2682,48 +2946,15 @@
     faceDetectInterval = null;
   }
 
-  // ══════════════════════════════════════
-  // CLOUD HISTORY SYNC
-  // ══════════════════════════════════════
-  // Include history in cloud saves so it syncs across devices
-
-  // Override getState to include history
-  const _origGetState = getState;
-  getState = function() {
-    const state = _origGetState();
-    state.history = getHistory();
-    return state;
-  };
-
-  // Override applyState to merge history
-  const _origApplyState = applyState;
-  applyState = function(state) {
-    if (state && state.history) {
-      const localHistory = getHistory();
-      const cloudHistory = state.history;
-      // Merge: for each day, keep whichever has more work logged
-      const merged = { ...localHistory };
-      for (const key of Object.keys(cloudHistory)) {
-        if (!merged[key] || (cloudHistory[key].totalWorkMs || 0) > (merged[key].totalWorkMs || 0)) {
-          merged[key] = cloudHistory[key];
-        }
-      }
-      saveHistory(merged);
-    }
-    _origApplyState(state);
-  };
-
   // ── Hook into togglePlayPause to start/stop camera ──
   const _origToggle = togglePlayPause;
   togglePlayPause = function() {
     const wasRunning = isRunning;
     _origToggle();
-    // After toggle
     if (isRunning && cameraEnabled) {
       startCamera();
       scheduleCameraSnap();
     } else if (!isRunning && cameraEnabled) {
-      // Keep camera on for face detect but stop snap timer
       clearTimeout(cameraTimer);
       if (!faceDetectEnabled) stopCamera();
     }
