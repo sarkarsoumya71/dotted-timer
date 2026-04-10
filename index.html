@@ -676,6 +676,100 @@
   }
   .history-clear:hover { border-color: var(--red); color: var(--red); }
 
+  /* ── Real clock (bottom-left corner) ── */
+  .real-clock {
+    position: fixed;
+    bottom: 16px;
+    left: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-dimmer);
+    letter-spacing: 0.04em;
+    z-index: 10;
+    transition: opacity 0.3s;
+    cursor: pointer;
+  }
+  .real-clock:hover { color: var(--text-dim); }
+  .real-clock.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── Camera selfie ── */
+  .camera-countdown-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 300; flex-direction: column;
+  }
+  .camera-countdown-overlay.visible { display: flex; }
+
+  .camera-countdown-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 120px; font-weight: 700;
+    color: var(--accent); line-height: 1;
+    animation: countPulse 1s ease infinite;
+  }
+  @keyframes countPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+  }
+
+  .camera-countdown-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--text-dim);
+    margin-top: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  .camera-flash {
+    position: fixed; inset: 0; background: #fff;
+    z-index: 310; opacity: 0; pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .camera-flash.flash { opacity: 1; }
+
+  .camera-preview-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    display: none; align-items: center; justify-content: center;
+    z-index: 280; flex-direction: column; gap: 16px;
+  }
+  .camera-preview-overlay.visible { display: flex; }
+
+  .camera-preview-img {
+    max-width: 360px; max-height: 360px; border-radius: 12px;
+    border: 2px solid var(--border);
+  }
+
+  .camera-preview-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.06em;
+  }
+
+  /* Camera indicator dot */
+  .camera-active-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--red); display: none;
+    box-shadow: 0 0 6px rgba(239,68,68,0.5);
+    animation: pulse 1.5s ease infinite;
+  }
+  .camera-active-dot.on { display: block; }
+
+  /* ── Photo gallery in history ── */
+  .history-photos {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .history-photos-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dimmer);
+    margin-bottom: 8px;
+  }
+  .history-photos-grid {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .history-photo-thumb {
+    width: 48px; height: 48px; border-radius: 6px;
+    object-fit: cover; border: 1px solid var(--border);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .history-photo-thumb:hover { transform: scale(1.1); }
+
   /* ── Responsive ── */
   @media (max-width: 600px) {
     .container { padding: 16px; }
@@ -720,6 +814,7 @@
     </div>
     <div class="header-right">
       <span class="save-indicator" id="saveIndicator"></span>
+      <div class="camera-active-dot" id="cameraDot"></div>
       <button class="history-toggle" id="historyToggleBtn" onclick="toggleHistory()">History</button>
       <button class="settings-toggle" id="settingsToggleBtn" onclick="toggleSettings()" title="Settings">&#9881;</button>
       <div class="user-badge" id="userBadge" style="display:none;">
@@ -849,9 +944,79 @@
       </div>
     </div>
   </div>
+
+  <div class="settings-group">
+    <div class="settings-group-title">Camera Selfie</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Photo selfie</div>
+        <div class="settings-row-sub">Takes your photo periodically as proof of work</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsCameraEnabled" onchange="updateCameraEnabled()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Photo interval</div>
+        <div class="settings-row-sub">How often to snap a selfie</div>
+      </div>
+      <div class="settings-row-control">
+        <input type="number" id="settingsCameraInterval" value="30" min="1" max="120" onchange="updateCameraInterval()">
+        <span>min</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Auto-pause on away</div>
+        <div class="settings-row-sub">Pause timer if you leave the camera</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsFaceDetect" onchange="updateFaceDetect()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-group-title">Display</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Show clock</div>
+        <div class="settings-row-sub">Real time in the bottom-left corner</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsClockEnabled" checked onchange="updateClockEnabled()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Check-in modal -->
+<!-- Real clock -->
+<div class="real-clock" id="realClock" onclick="toggleClockVisibility()"></div>
+
+<!-- Camera elements -->
+<div class="camera-flash" id="cameraFlash"></div>
+<div class="camera-countdown-overlay" id="cameraCountdown">
+  <div class="camera-countdown-number" id="countdownNumber">3</div>
+  <div class="camera-countdown-label">Say cheese</div>
+</div>
+<div class="camera-preview-overlay" id="cameraPreview">
+  <img class="camera-preview-img" id="previewImg">
+  <div class="camera-preview-time" id="previewTime"></div>
+  <button class="modal-btn" onclick="dismissPreview()">Got it</button>
+</div>
+<video id="cameraVideo" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:320px;height:240px;"></video>
+<canvas id="cameraCanvas" width="640" height="480" style="display:none;"></canvas>
+
 <div class="modal-overlay" id="checkinModal">
   <div class="modal">
     <div class="modal-emoji" id="checkinEmoji"></div>
@@ -1109,7 +1274,11 @@
     try {
       localStorage.setItem('dot-timer-settings', JSON.stringify({
         checkinIntervalMin: parseInt(document.getElementById('settingsCheckinInterval').value) || 10,
-        checkinEnabled: document.getElementById('settingsCheckinEnabled').checked
+        checkinEnabled: document.getElementById('settingsCheckinEnabled').checked,
+        cameraEnabled: document.getElementById('settingsCameraEnabled').checked,
+        cameraIntervalMin: parseInt(document.getElementById('settingsCameraInterval').value) || 30,
+        faceDetectEnabled: document.getElementById('settingsFaceDetect').checked,
+        clockEnabled: document.getElementById('settingsClockEnabled').checked
       }));
     } catch(e) {}
   }
@@ -1126,6 +1295,23 @@
         if (typeof s.checkinEnabled === 'boolean') {
           checkinEnabled = s.checkinEnabled;
           document.getElementById('settingsCheckinEnabled').checked = s.checkinEnabled;
+        }
+        if (typeof s.cameraEnabled === 'boolean') {
+          cameraEnabled = s.cameraEnabled;
+          document.getElementById('settingsCameraEnabled').checked = s.cameraEnabled;
+        }
+        if (s.cameraIntervalMin) {
+          cameraIntervalMs = s.cameraIntervalMin * 60 * 1000;
+          document.getElementById('settingsCameraInterval').value = s.cameraIntervalMin;
+        }
+        if (typeof s.faceDetectEnabled === 'boolean') {
+          faceDetectEnabled = s.faceDetectEnabled;
+          document.getElementById('settingsFaceDetect').checked = s.faceDetectEnabled;
+        }
+        if (typeof s.clockEnabled === 'boolean') {
+          clockEnabled = s.clockEnabled;
+          document.getElementById('settingsClockEnabled').checked = s.clockEnabled;
+          document.getElementById('realClock').classList.toggle('hidden', !s.clockEnabled);
         }
       }
     } catch(e) {}
@@ -1728,6 +1914,286 @@
   setInterval(updateDayBar, 1000);
   updateDayBar();
 
+  // ══════════════════════════════════════
+  // REAL CLOCK
+  // ══════════════════════════════════════
+  let clockEnabled = true;
+
+  function updateRealClock() {
+    const el = document.getElementById('realClock');
+    if (!clockEnabled) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  }
+
+  function toggleClockVisibility() {
+    clockEnabled = !clockEnabled;
+    document.getElementById('settingsClockEnabled').checked = clockEnabled;
+    saveSettings();
+    updateRealClock();
+  }
+
+  function updateClockEnabled() {
+    clockEnabled = document.getElementById('settingsClockEnabled').checked;
+    saveSettings();
+    updateRealClock();
+  }
+
+  setInterval(updateRealClock, 1000);
+  updateRealClock();
+
+  // ══════════════════════════════════════
+  // CAMERA SELFIE
+  // ══════════════════════════════════════
+  let cameraEnabled = false;
+  let cameraIntervalMs = 30 * 60 * 1000;
+  let cameraTimer = null;
+  let cameraStream = null;
+  let faceDetectEnabled = false;
+  let faceDetectInterval = null;
+  let todayPhotos = []; // stored as data URLs for today
+
+  function updateCameraEnabled() {
+    cameraEnabled = document.getElementById('settingsCameraEnabled').checked;
+    saveSettings();
+    if (cameraEnabled && isRunning) {
+      startCamera();
+      scheduleCameraSnap();
+    } else if (!cameraEnabled) {
+      stopCamera();
+      clearTimeout(cameraTimer);
+    }
+  }
+
+  function updateCameraInterval() {
+    const val = parseInt(document.getElementById('settingsCameraInterval').value) || 30;
+    cameraIntervalMs = val * 60 * 1000;
+    if (cameraEnabled && isRunning) scheduleCameraSnap();
+    saveSettings();
+  }
+
+  function updateFaceDetect() {
+    faceDetectEnabled = document.getElementById('settingsFaceDetect').checked;
+    saveSettings();
+    if (faceDetectEnabled && cameraEnabled && isRunning) {
+      startFaceDetection();
+    } else {
+      stopFaceDetection();
+    }
+  }
+
+  async function startCamera() {
+    if (cameraStream) return;
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+      document.getElementById('cameraVideo').srcObject = cameraStream;
+      document.getElementById('cameraDot').classList.add('on');
+      if (faceDetectEnabled) startFaceDetection();
+    } catch (e) {
+      console.error('Camera access denied:', e);
+      cameraEnabled = false;
+      document.getElementById('settingsCameraEnabled').checked = false;
+      saveSettings();
+    }
+  }
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    document.getElementById('cameraDot').classList.remove('on');
+    document.getElementById('cameraVideo').srcObject = null;
+    stopFaceDetection();
+  }
+
+  function scheduleCameraSnap() {
+    clearTimeout(cameraTimer);
+    if (!cameraEnabled) return;
+    cameraTimer = setTimeout(() => {
+      if (isRunning && cameraEnabled) startCountdownAndSnap();
+    }, cameraIntervalMs);
+  }
+
+  function startCountdownAndSnap() {
+    const overlay = document.getElementById('cameraCountdown');
+    const numEl = document.getElementById('countdownNumber');
+    overlay.classList.add('visible');
+    let count = 3;
+    numEl.textContent = count;
+
+    const interval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        numEl.textContent = count;
+      } else {
+        clearInterval(interval);
+        overlay.classList.remove('visible');
+        takePhoto();
+      }
+    }, 1000);
+  }
+
+  function takePhoto() {
+    // Flash
+    const flash = document.getElementById('cameraFlash');
+    flash.classList.add('flash');
+    setTimeout(() => flash.classList.remove('flash'), 200);
+
+    // Capture
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 640, 480);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Store photo
+    todayPhotos.push({ data: dataUrl, time: timeStr });
+    savePhotosLocal();
+
+    // Show preview briefly
+    const preview = document.getElementById('cameraPreview');
+    document.getElementById('previewImg').src = dataUrl;
+    document.getElementById('previewTime').textContent = `Captured at ${timeStr}`;
+    preview.classList.add('visible');
+
+    // Auto-dismiss after 3 sec
+    setTimeout(() => {
+      if (preview.classList.contains('visible')) preview.classList.remove('visible');
+    }, 3000);
+
+    // Schedule next
+    scheduleCameraSnap();
+  }
+
+  function dismissPreview() {
+    document.getElementById('cameraPreview').classList.remove('visible');
+  }
+
+  function savePhotosLocal() {
+    try {
+      // Only keep last 20 photos to avoid localStorage limits
+      const trimmed = todayPhotos.slice(-20);
+      localStorage.setItem('dot-timer-photos-' + getTodayKey(), JSON.stringify(trimmed));
+    } catch(e) {
+      // If storage full, drop oldest
+      todayPhotos = todayPhotos.slice(-5);
+    }
+  }
+
+  function loadPhotosLocal() {
+    try {
+      const raw = localStorage.getItem('dot-timer-photos-' + getTodayKey());
+      if (raw) todayPhotos = JSON.parse(raw);
+    } catch(e) {}
+  }
+
+  // ── Face detection (simple brightness-based presence check) ──
+  function startFaceDetection() {
+    stopFaceDetection();
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let lastBrightness = null;
+    let awayFrames = 0;
+    const AWAY_THRESHOLD = 8; // consecutive checks before pausing
+
+    faceDetectInterval = setInterval(() => {
+      if (!isRunning || !cameraStream || !faceDetectEnabled) return;
+
+      ctx.drawImage(video, 0, 0, 640, 480);
+      const imageData = ctx.getImageData(200, 100, 240, 280); // center region
+      const data = imageData.data;
+
+      // Calculate average brightness and variance
+      let totalBright = 0;
+      let pixels = 0;
+      for (let i = 0; i < data.length; i += 16) { // sample every 4th pixel
+        const r = data[i], g = data[i+1], b = data[i+2];
+        totalBright += (r + g + b) / 3;
+        pixels++;
+      }
+      const avgBright = totalBright / pixels;
+
+      // Calculate motion (difference from last frame)
+      if (lastBrightness !== null) {
+        const diff = Math.abs(avgBright - lastBrightness);
+        // If very little motion and very low/uniform brightness, person might be away
+        if (diff < 1.5 && (avgBright < 15 || avgBright > 245)) {
+          awayFrames++;
+          if (awayFrames >= AWAY_THRESHOLD) {
+            // Auto-pause
+            if (isRunning) {
+              togglePlayPause();
+              console.log('[Dot Timer] No face detected, auto-paused.');
+            }
+            awayFrames = 0;
+          }
+        } else {
+          awayFrames = Math.max(0, awayFrames - 1);
+        }
+      }
+      lastBrightness = avgBright;
+    }, 2000); // check every 2 seconds
+  }
+
+  function stopFaceDetection() {
+    clearInterval(faceDetectInterval);
+    faceDetectInterval = null;
+  }
+
+  // ══════════════════════════════════════
+  // CLOUD HISTORY SYNC
+  // ══════════════════════════════════════
+  // Include history in cloud saves so it syncs across devices
+
+  // Override getState to include history
+  const _origGetState = getState;
+  getState = function() {
+    const state = _origGetState();
+    state.history = getHistory();
+    return state;
+  };
+
+  // Override applyState to merge history
+  const _origApplyState = applyState;
+  applyState = function(state) {
+    if (state && state.history) {
+      const localHistory = getHistory();
+      const cloudHistory = state.history;
+      // Merge: for each day, keep whichever has more work logged
+      const merged = { ...localHistory };
+      for (const key of Object.keys(cloudHistory)) {
+        if (!merged[key] || (cloudHistory[key].totalWorkMs || 0) > (merged[key].totalWorkMs || 0)) {
+          merged[key] = cloudHistory[key];
+        }
+      }
+      saveHistory(merged);
+    }
+    _origApplyState(state);
+  };
+
+  // ── Hook into togglePlayPause to start/stop camera ──
+  const _origToggle = togglePlayPause;
+  togglePlayPause = function() {
+    const wasRunning = isRunning;
+    _origToggle();
+    // After toggle
+    if (isRunning && cameraEnabled) {
+      startCamera();
+      scheduleCameraSnap();
+    } else if (!isRunning && cameraEnabled) {
+      // Keep camera on for face detect but stop snap timer
+      clearTimeout(cameraTimer);
+      if (!faceDetectEnabled) stopCamera();
+    }
+  };
+
+  loadPhotosLocal();
   loadSettings();
   buildDots(); updateDots(); updateStats();
 </script>
