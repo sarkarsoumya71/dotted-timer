@@ -751,6 +751,36 @@
   }
   .camera-active-dot.on { display: block; }
 
+  /* Camera controls (brightness, flip) */
+  .camera-controls {
+    display: flex; align-items: center; gap: 12px; margin-top: 10px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .camera-control-group {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .camera-control-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--text-dimmer); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .brightness-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 120px; height: 4px; border-radius: 2px;
+    background: var(--border); outline: none;
+  }
+  .brightness-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  .flip-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer; letter-spacing: 0.04em;
+  }
+  .flip-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  .camera-flipped { transform: scaleX(-1); }
+
   /* ── Photo gallery in history ── */
   .history-photos {
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
@@ -981,6 +1011,26 @@
         <button class="btn" onclick="startCameraSetup()" style="padding:6px 14px;font-size:11px;">Test</button>
       </div>
     </div>
+    <div class="settings-row" id="cameraBrightnessRow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Brightness</div>
+      </div>
+      <div class="settings-row-control">
+        <input type="range" class="brightness-slider" id="settingsBrightnessSlider" min="50" max="200" value="100" oninput="adjustBrightness(this.value)">
+        <span id="settingsBrightnessValue" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);width:30px;">100%</span>
+      </div>
+    </div>
+    <div class="settings-row" id="cameraFlipRow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Flip horizontally</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsFlipCamera" onchange="toggleFlipSetting()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
     <div class="settings-row">
       <div>
         <div class="settings-row-label">Photo interval</div>
@@ -1020,6 +1070,34 @@
       </div>
     </div>
   </div>
+
+  <div class="settings-group">
+    <div class="settings-group-title">Alerts</div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Browser notifications</div>
+        <div class="settings-row-sub" id="notifStatus">Alerts you even when on another tab</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsNotifEnabled" checked onchange="updateNotifEnabled()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Sound alert</div>
+        <div class="settings-row-sub">Plays a chime on check-ins and photo snaps</div>
+      </div>
+      <div class="settings-row-control">
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="settingsSoundEnabled" checked onchange="updateSoundEnabled()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Real clock -->
@@ -1046,10 +1124,19 @@
 
     <video id="setupVideo" autoplay playsinline style="
       width:100%;max-width:360px;border-radius:12px;border:2px solid var(--border);
-      margin-bottom:12px;background:#000;
+      margin-bottom:8px;background:#000;filter:brightness(1);
     "></video>
 
-    <div style="margin-bottom:12px;">
+    <div class="camera-controls">
+      <div class="camera-control-group">
+        <span class="camera-control-label">Brightness</span>
+        <input type="range" class="brightness-slider" id="brightnessSlider" min="50" max="200" value="100" oninput="adjustBrightness(this.value)">
+        <span id="brightnessValue" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);width:30px;">100%</span>
+      </div>
+      <button class="flip-btn" onclick="flipCamera()">Flip</button>
+    </div>
+
+    <div style="margin-bottom:12px;margin-top:8px;">
       <select id="setupCameraSelect" onchange="switchSetupCamera()" style="
         font-family:'JetBrains Mono',monospace;font-size:12px;
         background:var(--surface);border:1px solid var(--border);color:var(--text);
@@ -1337,7 +1424,9 @@
         cameraIntervalMin: parseInt(document.getElementById('settingsCameraInterval').value) || 30,
         faceDetectEnabled: document.getElementById('settingsFaceDetect').checked,
         clockEnabled: document.getElementById('settingsClockEnabled').checked,
-        selectedDeviceId: selectedDeviceId
+        selectedDeviceId: selectedDeviceId,
+        notifEnabled: document.getElementById('settingsNotifEnabled').checked,
+        soundEnabled: document.getElementById('settingsSoundEnabled').checked
       }));
     } catch(e) {}
   }
@@ -1374,6 +1463,14 @@
         }
         if (s.selectedDeviceId) {
           selectedDeviceId = s.selectedDeviceId;
+        }
+        if (typeof s.notifEnabled === 'boolean') {
+          notifEnabled = s.notifEnabled;
+          document.getElementById('settingsNotifEnabled').checked = s.notifEnabled;
+        }
+        if (typeof s.soundEnabled === 'boolean') {
+          soundEnabled = s.soundEnabled;
+          document.getElementById('settingsSoundEnabled').checked = s.soundEnabled;
         }
       }
     } catch(e) {}
@@ -1632,9 +1729,38 @@
     window.addEventListener('beforeunload', () => { endCurrentSession(); saveLocal(); });
   }
 
-  (function checkExistingSession() {
-    const s = localStorage.getItem('dot-timer-sync-id');
-    if (s) document.getElementById('syncIdInput').value = s;
+  (async function checkExistingSession() {
+    const storedSyncId = localStorage.getItem('dot-timer-sync-id');
+    const storedBinId = localStorage.getItem('dot-timer-bin-id');
+
+    if (storedSyncId) {
+      // Auto-restore: skip setup screen entirely
+      SYNC_ID = storedSyncId;
+      BIN_ID = storedBinId;
+      syncMode = storedBinId ? 'cloud' : 'local';
+      showUserBadge(storedSyncId);
+
+      checkStaleSession();
+
+      // Try cloud first, fall back to local
+      let state = null;
+      if (BIN_ID) {
+        state = await loadFromBin();
+      }
+      const localState = loadLocal();
+
+      if (state && localState) {
+        applyState((state.savedAt || 0) > (localState.savedAt || 0) ? state : localState);
+      } else {
+        applyState(state || localState);
+      }
+
+      startAutoSave();
+      hideSetup();
+    } else {
+      // No existing session, show setup screen
+      document.getElementById('syncIdInput').value = '';
+    }
   })();
 
   // ══════════════════════════════════════
@@ -1841,6 +1967,9 @@
     document.getElementById('checkinBtn').textContent = wasRunning ? "I'm here, resume" : "Got it";
     document.getElementById('checkinBtn').dataset.wasRunning = wasRunning;
     checkinModal.classList.add('visible');
+
+    // Alert user even if on another tab
+    sendAlert(msg.title, msg.sub);
   }
 
   function dismissCheckin() {
@@ -1913,6 +2042,8 @@
       statusEl.className = 'status is-running'; statusText.textContent = 'Running';
       stopPauseDisplay(); startWorkSession();
       scheduleCheckin(); requestAnimationFrame(tick);
+      // Request notification permission on first play
+      if (notifEnabled) requestNotifPermission();
     }
     updateStats();
   }
@@ -1977,6 +2108,96 @@
   updateDayBar();
 
   // ══════════════════════════════════════
+  // ALERTS (Notifications + Sound)
+  // ══════════════════════════════════════
+  let notifEnabled = true;
+  let soundEnabled = true;
+
+  function updateNotifEnabled() {
+    notifEnabled = document.getElementById('settingsNotifEnabled').checked;
+    if (notifEnabled) requestNotifPermission();
+    saveSettings();
+  }
+
+  function updateSoundEnabled() {
+    soundEnabled = document.getElementById('settingsSoundEnabled').checked;
+    saveSettings();
+  }
+
+  async function requestNotifPermission() {
+    if (!('Notification' in window)) {
+      document.getElementById('notifStatus').textContent = 'Not supported in this browser';
+      document.getElementById('notifStatus').style.color = 'var(--red)';
+      return false;
+    }
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') {
+      document.getElementById('notifStatus').textContent = 'Blocked. Allow in browser settings.';
+      document.getElementById('notifStatus').style.color = 'var(--red)';
+      return false;
+    }
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      document.getElementById('notifStatus').textContent = 'Enabled. You\'ll get alerts on other tabs.';
+      document.getElementById('notifStatus').style.color = 'var(--green)';
+      return true;
+    } else {
+      document.getElementById('notifStatus').textContent = 'Permission denied. Enable in browser settings.';
+      document.getElementById('notifStatus').style.color = 'var(--red)';
+      return false;
+    }
+  }
+
+  function playChime() {
+    if (!soundEnabled) return;
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      // Two-tone chime
+      [520, 660].forEach((freq, i) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, ac.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.15 + 0.4);
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(ac.currentTime + i * 0.15);
+        osc.stop(ac.currentTime + i * 0.15 + 0.5);
+      });
+    } catch(e) {}
+  }
+
+  function sendAlert(title, body) {
+    // Play sound (works in background tabs)
+    playChime();
+
+    // Send browser notification (shows even on other tabs)
+    if (notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
+      const notif = new Notification('Dot Timer: ' + title, {
+        body: body,
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23f97316"/></svg>',
+        tag: 'dot-timer-alert', // replaces previous notification
+        requireInteraction: true
+      });
+      notif.onclick = () => {
+        window.focus();
+        notif.close();
+      };
+    }
+
+    // Also update page title to grab attention
+    const origTitle = document.title;
+    document.title = '⚠ ' + title + ' — Dot Timer';
+    // Restore title when user returns
+    const restoreTitle = () => {
+      document.title = 'Dot Timer';
+      window.removeEventListener('focus', restoreTitle);
+    };
+    window.addEventListener('focus', restoreTitle);
+  }
+
+  // ══════════════════════════════════════
   // REAL CLOCK
   // ══════════════════════════════════════
   let clockEnabled = true;
@@ -2027,6 +2248,8 @@
       // Show device row and test row in settings
       document.getElementById('cameraDeviceRow').style.display = '';
       document.getElementById('cameraTestRow').style.display = '';
+      document.getElementById('cameraBrightnessRow').style.display = '';
+      document.getElementById('cameraFlipRow').style.display = '';
       // Launch setup tutorial
       startCameraSetup();
     } else {
@@ -2034,6 +2257,8 @@
       clearTimeout(cameraTimer);
       document.getElementById('cameraDeviceRow').style.display = 'none';
       document.getElementById('cameraTestRow').style.display = 'none';
+      document.getElementById('cameraBrightnessRow').style.display = 'none';
+      document.getElementById('cameraFlipRow').style.display = 'none';
     }
   }
 
@@ -2103,6 +2328,12 @@
 
       // Start preview with selected device
       await startSetupPreview(setupSelect.value);
+
+      // Apply saved brightness and flip
+      document.getElementById('brightnessSlider').value = cameraBrightness;
+      document.getElementById('brightnessValue').textContent = cameraBrightness + '%';
+      document.getElementById('setupVideo').style.filter = `brightness(${cameraBrightness / 100})`;
+      applyFlip();
 
     } catch (e) {
       console.error('Camera setup failed:', e);
@@ -2262,6 +2493,9 @@
     let count = 3;
     numEl.textContent = count;
 
+    // Alert user to come back for photo
+    sendAlert('Photo time', 'Selfie in 3 seconds. Come back to the timer.');
+
     const interval = setInterval(() => {
       count--;
       if (count > 0) {
@@ -2326,11 +2560,70 @@
   function initCameraUI() {
     const savedDevice = localStorage.getItem('dot-timer-camera-device');
     if (savedDevice) selectedDeviceId = savedDevice;
+
+    const savedBrightness = localStorage.getItem('dot-timer-brightness');
+    if (savedBrightness) cameraBrightness = parseInt(savedBrightness);
+
+    const savedFlip = localStorage.getItem('dot-timer-flip');
+    if (savedFlip === 'true') cameraFlipped = true;
+
     if (cameraEnabled) {
       document.getElementById('cameraDeviceRow').style.display = '';
       document.getElementById('cameraTestRow').style.display = '';
+      document.getElementById('cameraBrightnessRow').style.display = '';
+      document.getElementById('cameraFlipRow').style.display = '';
       document.getElementById('cameraStatusText').textContent = 'Camera ready';
       document.getElementById('cameraStatusText').style.color = 'var(--green)';
+      document.getElementById('settingsBrightnessSlider').value = cameraBrightness;
+      document.getElementById('settingsBrightnessValue').textContent = cameraBrightness + '%';
+      document.getElementById('settingsFlipCamera').checked = cameraFlipped;
+    }
+  }
+
+  // ── Brightness control ──
+  let cameraBrightness = 100;
+  let cameraFlipped = false;
+
+  function adjustBrightness(val) {
+    cameraBrightness = parseInt(val);
+    // Update all video elements and sliders
+    const setupVideo = document.getElementById('setupVideo');
+    const mainVideo = document.getElementById('cameraVideo');
+    const filterStr = `brightness(${cameraBrightness / 100})`;
+    setupVideo.style.filter = filterStr;
+    mainVideo.style.filter = filterStr;
+
+    // Sync both sliders
+    document.getElementById('brightnessSlider').value = cameraBrightness;
+    document.getElementById('settingsBrightnessSlider').value = cameraBrightness;
+    document.getElementById('brightnessValue').textContent = cameraBrightness + '%';
+    document.getElementById('settingsBrightnessValue').textContent = cameraBrightness + '%';
+
+    localStorage.setItem('dot-timer-brightness', cameraBrightness);
+  }
+
+  function flipCamera() {
+    cameraFlipped = !cameraFlipped;
+    applyFlip();
+    document.getElementById('settingsFlipCamera').checked = cameraFlipped;
+    localStorage.setItem('dot-timer-flip', cameraFlipped);
+  }
+
+  function toggleFlipSetting() {
+    cameraFlipped = document.getElementById('settingsFlipCamera').checked;
+    applyFlip();
+    localStorage.setItem('dot-timer-flip', cameraFlipped);
+  }
+
+  function applyFlip() {
+    const setupVideo = document.getElementById('setupVideo');
+    const mainVideo = document.getElementById('cameraVideo');
+    if (cameraFlipped) {
+      setupVideo.classList.add('camera-flipped');
+      mainVideo.classList.add('camera-flipped');
+    } else {
+      setupVideo.classList.remove('camera-flipped');
+      mainVideo.classList.remove('camera-flipped');
     }
   }
 
