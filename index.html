@@ -1270,7 +1270,7 @@
 
 <script>
   // ══════════════════════════════════════════════
-  // CLOUD PERSISTENCE via jsonblob.com
+  // CLOUD PERSISTENCE (npoint.io primary, jsonbin.io fallback, localStorage always)
   // ══════════════════════════════════════════════
   let SYNC_ID = null;
   let BIN_ID = null;
@@ -1651,12 +1651,12 @@
   // PERSISTENCE LAYER
   // ══════════════════════════════════════
   //
-  // Cloud sync uses jsonblob.com (free, no API key, deterministic URLs).
-  // The blob ID is stored in localStorage AND encoded in the sync ID display
-  // so users on a new device can enter it and get their data back.
+  // Cloud sync uses npoint.io (free, no API key, proper CORS).
+  // The document ID is stored in localStorage AND shown in Settings
+  // so users on a new device can enter it and sync.
   //
 
-  const BLOB_API = 'https://jsonblob.com/api/jsonBlob';
+  const BLOB_API = 'https://api.npoint.io';
 
   function getState() {
     return {
@@ -1723,65 +1723,136 @@
     return null;
   }
 
-  // ── jsonblob.com cloud ──
+  // ── npoint.io cloud (free, CORS-friendly) ──
+  // npoint.io allows creating JSON bins via their website
+  // and reading/writing via API with proper CORS headers.
+  // For fully automatic creation, we use their API endpoint.
+
   async function createBlob(state) {
     try {
       showSaveStatus('saving');
-      const res = await fetch(BLOB_API, {
+      // Try npoint.io first
+      const res = await fetch('https://api.npoint.io', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(state)
       });
       if (res.ok) {
-        // jsonblob returns the blob URL in the Location header
-        const location = res.headers.get('Location');
-        if (location) {
-          BIN_ID = location.split('/').pop();
+        const data = await res.json();
+        // npoint returns the bin path
+        if (typeof data === 'string') {
+          BIN_ID = data;
+        } else if (data.id) {
+          BIN_ID = data.id;
         } else {
-          // Fallback: try to get from response
-          const data = await res.json();
-          // The blob ID might be in the URL
-          BIN_ID = res.url.split('/').pop();
-        }
-        if (BIN_ID) {
-          localStorage.setItem('dot-timer-blob-id', BIN_ID);
-          showSaveStatus('saved');
-          return true;
+          // Extract from response URL or body
+          const text = JSON.stringify(data);
+          const match = text.match(/[a-f0-9]{20,}/);
+          if (match) BIN_ID = match[0];
         }
       }
-      showSaveStatus('error');
+
+      // If npoint failed, try jsonbin.io as fallback
+      if (!BIN_ID) {
+        const res2 = await fetch('https://api.jsonbin.io/v3/b', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Bin-Private': 'false'
+          },
+          body: JSON.stringify(state)
+        });
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2.metadata && data2.metadata.id) {
+            BIN_ID = 'jb-' + data2.metadata.id; // prefix to know it's jsonbin
+          }
+        }
+      }
+
+      // If both failed, use localStorage-only mode but with a shareable export
+      if (!BIN_ID) {
+        // Generate a deterministic ID from sync ID for manual sharing
+        BIN_ID = 'local-' + btoa(SYNC_ID).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
+        syncMode = 'local-exportable';
+        showSaveStatus('local only');
+        localStorage.setItem('dot-timer-blob-id', BIN_ID);
+        return false;
+      }
+
+      localStorage.setItem('dot-timer-blob-id', BIN_ID);
+      showSaveStatus('saved');
+      return true;
     } catch (e) {
       console.error('Create blob failed:', e);
-      showSaveStatus('error');
+      // Fall back to local-exportable mode
+      BIN_ID = 'local-' + btoa(SYNC_ID || 'default').replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
+      syncMode = 'local-exportable';
+      localStorage.setItem('dot-timer-blob-id', BIN_ID);
+      showSaveStatus('local only');
+      return false;
     }
-    return false;
   }
 
   async function saveToBlob() {
-    if (!BIN_ID || syncMode !== 'cloud') return;
+    if (!BIN_ID || syncMode === 'local') return;
+
+    // If local-exportable, just save locally
+    if (syncMode === 'local-exportable' || BIN_ID.startsWith('local-')) {
+      saveLocal();
+      showSaveStatus('saved');
+      return;
+    }
+
     try {
       showSaveStatus('saving');
-      const res = await fetch(`${BLOB_API}/${BIN_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      let url, method;
+
+      if (BIN_ID.startsWith('jb-')) {
+        // jsonbin.io
+        const realId = BIN_ID.slice(3);
+        url = `https://api.jsonbin.io/v3/b/${realId}`;
+        method = 'PUT';
+      } else {
+        // npoint.io
+        url = `https://api.npoint.io/${BIN_ID}`;
+        method = 'POST';
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(getState())
       });
-      if (res.ok) { showSaveStatus('saved'); saveLocal(); }
-      else showSaveStatus('error');
+      if (res.ok) { showSaveStatus('synced'); saveLocal(); }
+      else { showSaveStatus('local only'); saveLocal(); }
     } catch (e) {
       console.error('Save failed:', e);
-      showSaveStatus('error');
+      showSaveStatus('local only');
+      saveLocal();
     }
   }
 
   async function loadFromBlob() {
     if (!BIN_ID) return null;
+
+    // Local-only mode
+    if (BIN_ID.startsWith('local-')) return null;
+
     try {
-      const res = await fetch(`${BLOB_API}/${BIN_ID}`, {
-        headers: { 'Accept': 'application/json' }
-      });
+      let url;
+      if (BIN_ID.startsWith('jb-')) {
+        const realId = BIN_ID.slice(3);
+        url = `https://api.jsonbin.io/v3/b/${realId}/latest`;
+      } else {
+        url = `https://api.npoint.io/${BIN_ID}`;
+      }
+
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
+        // jsonbin wraps in record
+        if (data.record) return data.record;
         return data;
       }
     } catch (e) {
