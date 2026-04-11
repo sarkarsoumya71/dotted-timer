@@ -1123,24 +1123,24 @@
   </div>
 
   <div class="settings-group">
-    <div class="settings-group-title">Cloud Sync</div>
-    <div class="settings-row" style="display:none;">
-      <div>
-        <div class="settings-row-label">Cloud ID</div>
-        <div class="settings-row-sub">Enter this on your other device to sync</div>
-      </div>
-      <div class="settings-row-control">
-        <span id="cloudIdDisplay" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);word-break:break-all;max-width:140px;text-align:right;cursor:pointer;" onclick="copyCloudId()" title="Click to copy"></span>
-      </div>
-    </div>
+    <div class="settings-group-title">Cloud Sync (GitHub)</div>
     <div class="settings-row">
       <div>
-        <div class="settings-row-label">Link another device</div>
-        <div class="settings-row-sub">Enter Cloud ID from your other device</div>
+        <div class="settings-row-label">GitHub Token</div>
+        <div class="settings-row-sub" id="gistSyncStatus">Paste your token to enable cross-device sync</div>
       </div>
       <div class="settings-row-control" style="gap:4px;">
-        <input type="text" id="linkDeviceInput" placeholder="Paste Cloud ID" style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;width:120px;outline:none;">
-        <button class="btn" onclick="linkDevice()" style="padding:6px 10px;font-size:10px;">Link</button>
+        <input type="password" id="gistTokenInput" placeholder="ghp_..." style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;width:130px;outline:none;">
+        <button class="btn" onclick="saveGistToken()" style="padding:6px 10px;font-size:10px;">Save</button>
+      </div>
+    </div>
+    <div class="settings-row" id="gistSyncNow" style="display:none;">
+      <div>
+        <div class="settings-row-label">Sync now</div>
+        <div class="settings-row-sub">Pull latest data from cloud</div>
+      </div>
+      <div class="settings-row-control">
+        <button class="btn" onclick="manualSync()" style="padding:6px 10px;font-size:10px;">Sync</button>
       </div>
     </div>
   </div>
@@ -1270,10 +1270,9 @@
 
 <script>
   // ══════════════════════════════════════════════
-  // CLOUD PERSISTENCE (npoint.io primary, jsonbin.io fallback, localStorage always)
+  // CLOUD PERSISTENCE (GitHub Gist)
   // ══════════════════════════════════════════════
   let SYNC_ID = null;
-  let BIN_ID = null;
   let syncMode = 'local';
   let autoSaveInterval = null;
   const SAVE_INTERVAL_MS = 30 * 60 * 1000;
@@ -1648,15 +1647,17 @@
   }
 
   // ══════════════════════════════════════
-  // PERSISTENCE LAYER
+  // PERSISTENCE LAYER (GitHub Gist)
   // ══════════════════════════════════════
   //
-  // Cloud sync uses npoint.io (free, no API key, proper CORS).
-  // The document ID is stored in localStorage AND shown in Settings
-  // so users on a new device can enter it and sync.
+  // Uses a private GitHub Gist as cloud storage.
+  // User provides a Personal Access Token with 'gist' scope.
+  // The gist is named after the sync ID so both devices find the same gist.
+  // Token is stored in localStorage per device.
   //
 
-  const BLOB_API = 'https://api.npoint.io';
+  let GIST_TOKEN = null;
+  let GIST_ID = null; // the gist ID once found/created
 
   function getState() {
     return {
@@ -1687,7 +1688,6 @@
     // Check if stale day
     if (state.sessionDate && state.sessionDate !== today) {
       sessionDate = today;
-      // Don't restore timer values from a different day
       totalRunningMs = 0;
       totalPausedMs = 0;
       cycles = 0;
@@ -1714,7 +1714,7 @@
     try {
       localStorage.setItem('dot-timer-state', JSON.stringify(getState()));
       localStorage.setItem('dot-timer-sync-id', SYNC_ID || '');
-      localStorage.setItem('dot-timer-blob-id', BIN_ID || '');
+      localStorage.setItem('dot-timer-gist-id', GIST_ID || '');
     } catch (e) {}
   }
 
@@ -1723,150 +1723,145 @@
     return null;
   }
 
-  // ── npoint.io cloud (free, CORS-friendly) ──
-  // npoint.io allows creating JSON bins via their website
-  // and reading/writing via API with proper CORS headers.
-  // For fully automatic creation, we use their API endpoint.
+  // ── GitHub Gist API ──
+  const GIST_API = 'https://api.github.com/gists';
+  const GIST_FILENAME = () => `dot-timer-${SYNC_ID || 'default'}.json`;
 
-  async function createBlob(state) {
+  async function gistHeaders() {
+    if (!GIST_TOKEN) return null;
+    return {
+      'Authorization': `token ${GIST_TOKEN}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github.v3+json'
+    };
+  }
+
+  // Find existing gist by description
+  async function findGist() {
+    const headers = await gistHeaders();
+    if (!headers) return null;
+
+    try {
+      const res = await fetch(`${GIST_API}?per_page=100`, { headers });
+      if (!res.ok) return null;
+      const gists = await res.json();
+      const desc = `dot-timer-sync-${SYNC_ID}`;
+      const found = gists.find(g => g.description === desc);
+      if (found) {
+        GIST_ID = found.id;
+        localStorage.setItem('dot-timer-gist-id', GIST_ID);
+        return found;
+      }
+    } catch (e) {
+      console.error('Find gist failed:', e);
+    }
+    return null;
+  }
+
+  // Create a new gist
+  async function createGist(state) {
+    const headers = await gistHeaders();
+    if (!headers) return false;
+
     try {
       showSaveStatus('saving');
-      // Try npoint.io first
-      const res = await fetch('https://api.npoint.io', {
+      const res = await fetch(GIST_API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
+        headers,
+        body: JSON.stringify({
+          description: `dot-timer-sync-${SYNC_ID}`,
+          public: false,
+          files: {
+            [GIST_FILENAME()]: {
+              content: JSON.stringify(state)
+            }
+          }
+        })
       });
       if (res.ok) {
         const data = await res.json();
-        // npoint returns the bin path
-        if (typeof data === 'string') {
-          BIN_ID = data;
-        } else if (data.id) {
-          BIN_ID = data.id;
-        } else {
-          // Extract from response URL or body
-          const text = JSON.stringify(data);
-          const match = text.match(/[a-f0-9]{20,}/);
-          if (match) BIN_ID = match[0];
-        }
+        GIST_ID = data.id;
+        localStorage.setItem('dot-timer-gist-id', GIST_ID);
+        showSaveStatus('synced');
+        return true;
       }
+      showSaveStatus('sync failed');
+    } catch (e) {
+      console.error('Create gist failed:', e);
+      showSaveStatus('sync failed');
+    }
+    return false;
+  }
 
-      // If npoint failed, try jsonbin.io as fallback
-      if (!BIN_ID) {
-        const res2 = await fetch('https://api.jsonbin.io/v3/b', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Bin-Private': 'false'
-          },
-          body: JSON.stringify(state)
-        });
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2.metadata && data2.metadata.id) {
-            BIN_ID = 'jb-' + data2.metadata.id; // prefix to know it's jsonbin
+  // Update existing gist
+  async function saveToGist() {
+    if (!GIST_ID || !GIST_TOKEN) { saveLocal(); return; }
+    const headers = await gistHeaders();
+    if (!headers) return;
+
+    try {
+      showSaveStatus('saving');
+      const res = await fetch(`${GIST_API}/${GIST_ID}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          files: {
+            [GIST_FILENAME()]: {
+              content: JSON.stringify(getState())
+            }
+          }
+        })
+      });
+      if (res.ok) {
+        showSaveStatus('synced');
+        saveLocal();
+      } else {
+        showSaveStatus('sync failed');
+        saveLocal();
+      }
+    } catch (e) {
+      console.error('Save to gist failed:', e);
+      showSaveStatus('sync failed');
+      saveLocal();
+    }
+  }
+
+  // Load from gist
+  async function loadFromGist() {
+    if (!GIST_ID || !GIST_TOKEN) return null;
+    const headers = await gistHeaders();
+    if (!headers) return null;
+
+    try {
+      const res = await fetch(`${GIST_API}/${GIST_ID}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const file = data.files[GIST_FILENAME()];
+        if (file && file.content) {
+          return JSON.parse(file.content);
+        }
+        // Try finding any json file in the gist
+        for (const fname of Object.keys(data.files)) {
+          if (fname.endsWith('.json')) {
+            try { return JSON.parse(data.files[fname].content); } catch(e) {}
           }
         }
       }
-
-      // If both failed, use localStorage-only mode but with a shareable export
-      if (!BIN_ID) {
-        // Generate a deterministic ID from sync ID for manual sharing
-        BIN_ID = 'local-' + btoa(SYNC_ID).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
-        syncMode = 'local-exportable';
-        showSaveStatus('local only');
-        localStorage.setItem('dot-timer-blob-id', BIN_ID);
-        return false;
-      }
-
-      localStorage.setItem('dot-timer-blob-id', BIN_ID);
-      showSaveStatus('saved');
-      return true;
     } catch (e) {
-      console.error('Create blob failed:', e);
-      // Fall back to local-exportable mode
-      BIN_ID = 'local-' + btoa(SYNC_ID || 'default').replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
-      syncMode = 'local-exportable';
-      localStorage.setItem('dot-timer-blob-id', BIN_ID);
-      showSaveStatus('local only');
-      return false;
-    }
-  }
-
-  async function saveToBlob() {
-    if (!BIN_ID || syncMode === 'local') return;
-
-    // If local-exportable, just save locally
-    if (syncMode === 'local-exportable' || BIN_ID.startsWith('local-')) {
-      saveLocal();
-      showSaveStatus('saved');
-      return;
-    }
-
-    try {
-      showSaveStatus('saving');
-      let url, method;
-
-      if (BIN_ID.startsWith('jb-')) {
-        // jsonbin.io
-        const realId = BIN_ID.slice(3);
-        url = `https://api.jsonbin.io/v3/b/${realId}`;
-        method = 'PUT';
-      } else {
-        // npoint.io
-        url = `https://api.npoint.io/${BIN_ID}`;
-        method = 'POST';
-      }
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(getState())
-      });
-      if (res.ok) { showSaveStatus('synced'); saveLocal(); }
-      else { showSaveStatus('local only'); saveLocal(); }
-    } catch (e) {
-      console.error('Save failed:', e);
-      showSaveStatus('local only');
-      saveLocal();
-    }
-  }
-
-  async function loadFromBlob() {
-    if (!BIN_ID) return null;
-
-    // Local-only mode
-    if (BIN_ID.startsWith('local-')) return null;
-
-    try {
-      let url;
-      if (BIN_ID.startsWith('jb-')) {
-        const realId = BIN_ID.slice(3);
-        url = `https://api.jsonbin.io/v3/b/${realId}/latest`;
-      } else {
-        url = `https://api.npoint.io/${BIN_ID}`;
-      }
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        // jsonbin wraps in record
-        if (data.record) return data.record;
-        return data;
-      }
-    } catch (e) {
-      console.error('Load from cloud failed:', e);
+      console.error('Load from gist failed:', e);
     }
     return null;
   }
 
   function showSaveStatus(status) {
-    saveIndicator.className = 'save-indicator ' + status;
-    if (status === 'saving') saveIndicator.textContent = 'saving...';
-    else if (status === 'saved') saveIndicator.textContent = 'synced';
-    else if (status === 'error') saveIndicator.textContent = 'sync failed';
-    if (status === 'saved') setTimeout(() => { saveIndicator.textContent = ''; saveIndicator.className = 'save-indicator'; }, 3000);
+    saveIndicator.className = 'save-indicator ' + status.replace(/\s/g, '-');
+    if (status === 'saving') { saveIndicator.textContent = 'saving...'; saveIndicator.style.color = 'var(--accent)'; }
+    else if (status === 'synced') { saveIndicator.textContent = 'synced'; saveIndicator.style.color = 'var(--green)'; }
+    else if (status === 'sync failed') { saveIndicator.textContent = 'sync failed'; saveIndicator.style.color = 'var(--red)'; }
+    else if (status === 'local only') { saveIndicator.textContent = 'local only'; saveIndicator.style.color = 'var(--text-dimmer)'; }
+    else { saveIndicator.textContent = status; saveIndicator.style.color = 'var(--text-dimmer)'; }
+
+    if (status === 'synced') setTimeout(() => { saveIndicator.textContent = ''; }, 3000);
   }
 
   async function saveProgress() {
@@ -1881,10 +1876,95 @@
     }
 
     saveLocal();
-    if (syncMode === 'cloud') {
-      if (BIN_ID) await saveToBlob();
-      else await createBlob(getState());
+    if (GIST_TOKEN) {
+      if (GIST_ID) await saveToGist();
+      else await createGist(getState());
     }
+  }
+
+  // ── GitHub token management ──
+  function saveGistToken() {
+    const token = document.getElementById('gistTokenInput').value.trim();
+    if (!token || !token.startsWith('ghp_')) {
+      document.getElementById('gistSyncStatus').textContent = 'Invalid token. Must start with ghp_';
+      document.getElementById('gistSyncStatus').style.color = 'var(--red)';
+      return;
+    }
+    GIST_TOKEN = token;
+    localStorage.setItem('dot-timer-gist-token', token);
+    document.getElementById('gistSyncStatus').textContent = 'Token saved. Syncing...';
+    document.getElementById('gistSyncStatus').style.color = 'var(--accent)';
+    document.getElementById('gistSyncNow').style.display = '';
+
+    // Try to find existing gist or create one
+    initGistSync();
+  }
+
+  async function initGistSync() {
+    if (!GIST_TOKEN) return;
+
+    // Try to find existing gist
+    const existing = await findGist();
+    if (existing) {
+      document.getElementById('gistSyncStatus').textContent = 'Connected. Syncing...';
+      document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+
+      // Load state from gist
+      const cloudState = await loadFromGist();
+      const localState = loadLocal();
+
+      if (cloudState && localState) {
+        applyState((cloudState.savedAt || 0) > (localState.savedAt || 0) ? cloudState : localState);
+      } else if (cloudState) {
+        applyState(cloudState);
+      }
+
+      document.getElementById('gistSyncStatus').textContent = 'Synced';
+      document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+    } else {
+      // Create new gist
+      const success = await createGist(getState());
+      if (success) {
+        document.getElementById('gistSyncStatus').textContent = 'Created. Synced.';
+        document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+      } else {
+        document.getElementById('gistSyncStatus').textContent = 'Failed. Check token permissions.';
+        document.getElementById('gistSyncStatus').style.color = 'var(--red)';
+      }
+    }
+  }
+
+  async function manualSync() {
+    if (!GIST_TOKEN) return;
+    document.getElementById('gistSyncStatus').textContent = 'Syncing...';
+    document.getElementById('gistSyncStatus').style.color = 'var(--accent)';
+
+    const cloudState = await loadFromGist();
+    if (cloudState) {
+      applyState(cloudState);
+      document.getElementById('gistSyncStatus').textContent = 'Synced from cloud';
+      document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+    } else {
+      // Push local to cloud
+      await saveProgress();
+      document.getElementById('gistSyncStatus').textContent = 'Pushed to cloud';
+      document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+    }
+  }
+
+  function loadGistToken() {
+    try {
+      const token = localStorage.getItem('dot-timer-gist-token');
+      const gistId = localStorage.getItem('dot-timer-gist-id');
+      if (token) {
+        GIST_TOKEN = token;
+        GIST_ID = gistId;
+        document.getElementById('gistTokenInput').value = '••••••••••••••';
+        document.getElementById('gistSyncStatus').textContent = 'Connected';
+        document.getElementById('gistSyncStatus').style.color = 'var(--green)';
+        document.getElementById('gistSyncNow').style.display = '';
+      }
+    } catch(e) {}
   }
 
   // ── Setup flow ──
@@ -1896,82 +1976,21 @@
 
     checkStaleSession();
 
-    // Check if we have a blob ID stored locally for this sync ID
-    const storedBlobId = localStorage.getItem('dot-timer-blob-id');
-    const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-
-    if (storedBlobId && storedSyncId === id) {
-      BIN_ID = storedBlobId;
-      // Load from cloud
-      const cloudState = await loadFromBlob();
-      const localState = loadLocal();
-      if (cloudState && localState) {
-        applyState((cloudState.savedAt || 0) > (localState.savedAt || 0) ? cloudState : localState);
-      } else {
-        applyState(cloudState || localState);
-      }
-    } else if (storedBlobId && storedSyncId !== id) {
-      // Different sync ID entered, maybe from another device
-      // The user might be entering a blob ID directly
-      // Try treating the input as a blob ID
-      BIN_ID = null;
-      const localState = loadLocal();
-      if (localState) applyState(localState);
-      await createBlob(getState());
-    } else {
-      // First time, no blob exists
-      const localState = loadLocal();
-      if (localState) applyState(localState);
-      await createBlob(getState());
-    }
+    // Load local state
+    const localState = loadLocal();
+    if (localState) applyState(localState);
 
     localStorage.setItem('dot-timer-sync-id', SYNC_ID);
 
-    // Show the cloud ID so user can note it for other devices
-    if (BIN_ID) {
-      showCloudId();
+    // Load gist token if saved
+    loadGistToken();
+
+    // If we have a token, try to sync from cloud
+    if (GIST_TOKEN) {
+      await initGistSync();
     }
 
     startAutoSave(); hideSetup();
-  }
-
-  function showCloudId() {
-    const el = document.getElementById('cloudIdDisplay');
-    if (el && BIN_ID) {
-      el.textContent = BIN_ID;
-      el.parentElement.parentElement.style.display = '';
-    }
-  }
-
-  function copyCloudId() {
-    if (BIN_ID) {
-      navigator.clipboard.writeText(BIN_ID).then(() => {
-        const el = document.getElementById('cloudIdDisplay');
-        const orig = el.textContent;
-        el.textContent = 'Copied!';
-        setTimeout(() => { el.textContent = orig; }, 1500);
-      });
-    }
-  }
-
-  async function linkDevice() {
-    const blobId = document.getElementById('linkDeviceInput').value.trim();
-    if (!blobId) return;
-
-    BIN_ID = blobId;
-    localStorage.setItem('dot-timer-blob-id', BIN_ID);
-
-    const state = await loadFromBlob();
-    if (state) {
-      applyState(state);
-      showCloudId();
-      document.getElementById('linkDeviceInput').value = '';
-      alert('Synced! Your progress has been loaded from the cloud.');
-    } else {
-      alert('Could not find data with that Cloud ID. Check if it is correct.');
-      BIN_ID = null;
-      localStorage.removeItem('dot-timer-blob-id');
-    }
   }
 
   function startWithoutSync() {
@@ -1995,7 +2014,7 @@
       if (document.visibilityState === 'hidden') {
         endCurrentSession();
         saveLocal();
-        if (syncMode === 'cloud' && BIN_ID) saveToBin();
+        if (GIST_TOKEN && GIST_ID) saveToGist();
       }
     });
     window.addEventListener('beforeunload', () => { endCurrentSession(); saveLocal(); });
@@ -2003,29 +2022,30 @@
 
   (async function checkExistingSession() {
     const storedSyncId = localStorage.getItem('dot-timer-sync-id');
-    const storedBlobId = localStorage.getItem('dot-timer-blob-id');
 
     if (storedSyncId) {
       SYNC_ID = storedSyncId;
-      BIN_ID = storedBlobId;
-      syncMode = storedBlobId ? 'cloud' : 'local';
+      syncMode = 'cloud';
       showUserBadge(storedSyncId);
 
       checkStaleSession();
+      loadGistToken();
 
-      let state = null;
-      if (BIN_ID) {
-        state = await loadFromBlob();
-      }
+      // Load local state first (instant)
       const localState = loadLocal();
+      if (localState) applyState(localState);
 
-      if (state && localState) {
-        applyState((state.savedAt || 0) > (localState.savedAt || 0) ? state : localState);
-      } else {
-        applyState(state || localState);
+      // Then try cloud sync in background
+      if (GIST_TOKEN) {
+        const gistId = localStorage.getItem('dot-timer-gist-id');
+        if (gistId) GIST_ID = gistId;
+
+        const cloudState = await loadFromGist();
+        if (cloudState && (!localState || (cloudState.savedAt || 0) > (localState.savedAt || 0))) {
+          applyState(cloudState);
+        }
       }
 
-      if (BIN_ID) showCloudId();
       startAutoSave();
       hideSetup();
     } else {
