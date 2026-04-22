@@ -894,6 +894,17 @@
     </div>
   </div>
 
+  <!-- Activity monitor bar -->
+  <div class="day-bar-section" id="activityBar" style="display:none;margin-bottom:12px;padding:10px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="activityDot" style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);">Desktop</span>
+      </div>
+      <span id="activityAppName" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);"></span>
+    </div>
+  </div>
+
   <!-- Day progress bar -->
   <div class="day-bar-section">
     <div class="day-bar-header">
@@ -1659,14 +1670,41 @@
   let GIST_TOKEN = null;
   let GIST_ID = null; // the gist ID once found/created
 
+  // Store the last known activity from the desktop monitor
+  let lastKnownActivity = null;
+
   function getState() {
-    return {
-      totalRunningMs, totalPausedMs, cycles, elapsedCycleMs, goalCelebrated,
+    // If timer is running, include the time elapsed since last tick
+    let currentRunningMs = totalRunningMs;
+    let currentElapsedCycleMs = elapsedCycleMs;
+    if (isRunning && lastTickTime) {
+      const elapsed = performance.now() - lastTickTime;
+      currentRunningMs += elapsed;
+      currentElapsedCycleMs += elapsed;
+    }
+    // If paused, include pause time
+    let currentPausedMs = totalPausedMs;
+    if (!isRunning && lastPauseTime) {
+      currentPausedMs += performance.now() - lastPauseTime;
+    }
+
+    const state = {
+      totalRunningMs: currentRunningMs,
+      totalPausedMs: currentPausedMs,
+      cycles, elapsedCycleMs: currentElapsedCycleMs, goalCelebrated,
       goal: parseInt(goalInput.value) || 8,
       dayStart: dayStartInput.value, dayEnd: dayEndInput.value,
-      sessionDate, savedAt: Date.now(), wasRunning: isRunning,
+      sessionDate: new Date().toDateString(),
+      savedAt: Date.now(), wasRunning: isRunning,
       history: getHistory()
     };
+
+    // Preserve the activity field so we don't overwrite the Python script's data
+    if (lastKnownActivity) {
+      state.activity = lastKnownActivity;
+    }
+
+    return state;
   }
 
   function applyState(state) {
@@ -1694,16 +1732,23 @@
       elapsedCycleMs = 0;
       goalCelebrated = false;
     } else {
+      // Same day - restore timer values
       totalRunningMs = state.totalRunningMs || 0;
       totalPausedMs = state.totalPausedMs || 0;
       cycles = state.cycles || 0;
       elapsedCycleMs = state.elapsedCycleMs || 0;
       goalCelebrated = state.goalCelebrated || false;
+      sessionDate = state.sessionDate || today;
     }
 
     if (state.goal) goalInput.value = state.goal;
     if (state.dayStart) dayStartInput.value = state.dayStart;
     if (state.dayEnd) dayEndInput.value = state.dayEnd;
+
+    // Clear existing bills before rebuilding
+    const existingGrid = document.querySelector('.bills-grid');
+    if (existingGrid) existingGrid.remove();
+    if (earningsEmpty && cycles > 0) earningsEmpty.style.display = 'none';
 
     for (let i = 1; i <= cycles; i++) addBill(i, true);
     updateDots(); updateTimeDisplay(); updateStats();
@@ -1801,13 +1846,35 @@
 
     try {
       showSaveStatus('saving');
+
+      // Read existing gist first to preserve the activity field from desktop monitor
+      try {
+        const readRes = await fetch(`${GIST_API}/${GIST_ID}`, { headers });
+        if (readRes.ok) {
+          const gistData = await readRes.json();
+          const file = gistData.files[GIST_FILENAME()];
+          if (file && file.content) {
+            const existing = JSON.parse(file.content);
+            // Preserve the activity field if it exists and is recent (< 60s old)
+            if (existing.activity && existing.activity.source === 'desktop-monitor') {
+              const age = Date.now() - (existing.activity.updatedAt || 0);
+              if (age < 60000) {
+                lastKnownActivity = existing.activity;
+              }
+            }
+          }
+        }
+      } catch(e) { /* read failed, proceed with save anyway */ }
+
+      const state = getState();
+
       const res = await fetch(`${GIST_API}/${GIST_ID}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({
           files: {
             [GIST_FILENAME()]: {
-              content: JSON.stringify(getState())
+              content: JSON.stringify(state)
             }
           }
         })
@@ -2012,12 +2079,18 @@
     autoSaveInterval = setInterval(() => saveProgress(), SAVE_INTERVAL_MS);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        endCurrentSession();
+        // Just save state, don't end current session
+        // The timer keeps running in the background
         saveLocal();
         if (GIST_TOKEN && GIST_ID) saveToGist();
       }
     });
-    window.addEventListener('beforeunload', () => { endCurrentSession(); saveLocal(); });
+    window.addEventListener('beforeunload', () => {
+      endCurrentSession();
+      saveLocal();
+    });
+    // Also save every 60 seconds as a safety net for PC shutdowns
+    setInterval(() => { saveLocal(); }, 60000);
   }
 
   (async function checkExistingSession() {
@@ -3055,6 +3128,75 @@
   loadSettings();
   initCameraUI();
   buildDots(); updateDots(); updateStats();
+
+  // ══════════════════════════════════════
+  // DESKTOP ACTIVITY MONITOR
+  // ══════════════════════════════════════
+  // Polls the Gist for activity data written by the desktop Python script.
+  // Auto-pauses on unproductive apps, auto-resumes on productive ones.
+
+  let activityMonitorEnabled = false;
+  let lastActivityStatus = null;
+  let activityPausedByMonitor = false; // track if WE paused it (not the user)
+
+  function pollActivity() {
+    if (!GIST_TOKEN || !GIST_ID) return;
+    console.log('[Dot Timer] Activity polling started');
+
+    setInterval(async () => {
+      try {
+        const state = await loadFromGist();
+        if (!state || !state.activity) {
+          console.log('[Dot Timer] No activity data in gist');
+          return;
+        }
+
+        const activity = state.activity;
+        lastKnownActivity = activity; // preserve for when we save back
+        const age = Date.now() - (activity.updatedAt || 0);
+
+        // Ignore stale data (older than 60 seconds)
+        if (age > 60000) {
+          console.log('[Dot Timer] Activity data stale (' + Math.round(age/1000) + 's old)');
+          return;
+        }
+
+        // Show activity bar
+        const bar = document.getElementById('activityBar');
+        const dot = document.getElementById('activityDot');
+        const appName = document.getElementById('activityAppName');
+        bar.style.display = '';
+        activityMonitorEnabled = true;
+
+        appName.textContent = activity.app || 'Unknown';
+        console.log('[Dot Timer] Activity: ' + activity.status + ' - ' + activity.app);
+
+        if (activity.status === 'away') {
+          dot.style.background = 'var(--red)';
+          if (isRunning && !activityPausedByMonitor) {
+            activityPausedByMonitor = true;
+            togglePlayPause();
+            sendAlert('Unproductive app detected', activity.app + ' - timer paused');
+          }
+        } else if (activity.status === 'working') {
+          dot.style.background = 'var(--green)';
+          if (!isRunning && activityPausedByMonitor) {
+            activityPausedByMonitor = false;
+            togglePlayPause();
+          }
+        }
+
+        lastActivityStatus = activity.status;
+      } catch (e) {
+        console.error('[Dot Timer] Poll error:', e);
+      }
+    }, 10000); // poll every 10 seconds
+  }
+
+  // Start polling if we have gist credentials
+  setTimeout(() => {
+    if (GIST_TOKEN && GIST_ID) pollActivity();
+  }, 3000);
 </script>
 </body>
 </html>
