@@ -2084,6 +2084,10 @@
         saveLocal();
         if (GIST_TOKEN && GIST_ID) saveToGist();
       }
+      if (document.visibilityState === 'visible') {
+        // Check if we missed midnight while hidden or laptop was asleep
+        checkDateChange();
+      }
     });
     window.addEventListener('beforeunload', () => {
       endCurrentSession();
@@ -2179,7 +2183,7 @@
     totalEarningsEl.textContent = cycles * 100;
   }
 
-  let dayEndTriggered = false; // prevent multiple resets in same second
+  let dayEndTriggered = false;
 
   function updateDayBar() {
     const now = new Date();
@@ -2194,19 +2198,29 @@
     const hl = Math.max(0, remMs/3600000), hw = Math.floor(hl), ml = Math.round((hl-hw)*60);
     dayHoursLeft.innerHTML = `<span>${hw}h ${ml}m</span> left`;
 
-    // ── Auto-reset at end time ──
+    // ── Auto-reset: check both end time crossing AND date change ──
     checkDayEnd(now, end);
+    checkDateChange();
   }
 
   function checkDayEnd(now, end) {
-    // If we've passed end time and haven't triggered reset yet
     if (now >= end && !dayEndTriggered) {
       dayEndTriggered = true;
       autoResetForNewDay();
     }
-    // Reset the flag when we're before end time (new cycle)
     if (now < end) {
       dayEndTriggered = false;
+    }
+  }
+
+  // This catches the case where the laptop was asleep at midnight
+  // or the tab was backgrounded. If the stored sessionDate doesn't
+  // match today, we missed midnight and need to reset now.
+  function checkDateChange() {
+    const today = new Date().toDateString();
+    if (sessionDate && sessionDate !== today && totalRunningMs > 0) {
+      console.log('[Dot Timer] Date changed (' + sessionDate + ' -> ' + today + '). Resetting.');
+      autoResetForNewDay();
     }
   }
 
